@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://proposal-intelligence-system-f.onrender.com/api',
+  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api',
   headers: { 'Content-Type': 'application/json' }
 });
 
@@ -44,6 +44,25 @@ export const getOpportunity = async (id) => {
 // ── AI AGENTS ────────────────────────────────────
 export const generateQuestions = async (id) => {
   const res = await api.post(`/opportunities/${id}/questions`);
+  return res.data;
+};
+
+// ── ANSWER COLUMN (3-option resolver) ────────────
+// mode: 'from_brief' | 'flagged_to_client' | 'draft_assumption'
+export const resolveAnswer = async (opportunityId, questionIndex, mode) => {
+  const res = await api.post(`/opportunities/${opportunityId}/questions/${questionIndex}/resolve`, { mode });
+  return res.data;
+};
+
+// Manual edit of the answer text box (used after auto-fill too)
+export const updateQuestionAnswer = async (opportunityId, questionIndex, answer_text) => {
+  const res = await api.patch(`/opportunities/${opportunityId}/questions/${questionIndex}`, { answer_text });
+  return res.data;
+};
+
+// ── FRAMEWORK BUTTON ──────────────────────────────
+export const setQuestionFramework = async (opportunityId, questionIndex, framework_used) => {
+  const res = await api.patch(`/opportunities/${opportunityId}/questions/${questionIndex}/framework`, { framework_used });
   return res.data;
 };
 

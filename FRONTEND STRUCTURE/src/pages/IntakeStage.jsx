@@ -1,36 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyseBrief } from "../services/api";
+
+// Everything the user has typed/seen on this page is saved under this key,
+// so navigating away (e.g. to Questions) and coming back restores it exactly.
+const INTAKE_STORAGE_KEY = "pis_intake_state";
+
+const DEFAULT_FORM = {
+  title: "",
+  client: "",
+  organisation: "",
+  industry: "",
+  geography: "",
+  owner: "",
+  source: "",
+  email: "",
+  brief: "",
+  meetingNotes: "",
+  seniority: "",
+  capability: "",
+  duration: "",
+  delivery: "",
+  faculty: "",
+  budget: "",
+  urgency: "",
+};
 
 export default function IntakeStage() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    title: "",
-    client: "",
-    organisation: "",
-    industry: "",
-    geography: "",
-    owner: "",
-    source: "",
-    email: "",
-    brief: "",
-    meetingNotes: "",
-    seniority: "",
-    capability: "",
-    duration: "",
-    delivery: "",
-    faculty: "",
-    budget: "",
-    urgency: "",
-  });
-
+  const [formData, setFormData] = useState(DEFAULT_FORM);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ── Restore everything from localStorage on mount ──
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(INTAKE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.formData) setFormData({ ...DEFAULT_FORM, ...parsed.formData });
+        if (parsed.analysis) setAnalysis(parsed.analysis);
+      }
+    } catch {
+      // ignore malformed storage, just start fresh
+    }
+  }, []);
+
+  // ── Persist form data on every change, so it survives navigation ──
+  const persist = (nextFormData, nextAnalysis) => {
+    try {
+      localStorage.setItem(INTAKE_STORAGE_KEY, JSON.stringify({
+        formData: nextFormData,
+        analysis: nextAnalysis,
+      }));
+    } catch {
+      // storage full or unavailable — form still works for this session
+    }
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const updated = { ...formData, [e.target.name]: e.target.value };
+    setFormData(updated);
+    persist(updated, analysis);
   };
 
   const handleAnalyse = async () => {
@@ -59,6 +92,7 @@ export default function IntakeStage() {
       localStorage.setItem("pis_opportunity_id", result.opportunity_id);
 
       setAnalysis(result);
+      persist(formData, result);
 
     } catch (err) {
       console.error(err);
@@ -79,6 +113,15 @@ export default function IntakeStage() {
     navigate("/questions");
   };
 
+  // ── Start a genuinely new opportunity (explicit user action only) ──
+  const handleStartNew = () => {
+    setFormData(DEFAULT_FORM);
+    setAnalysis(null);
+    setError("");
+    localStorage.removeItem(INTAKE_STORAGE_KEY);
+    localStorage.removeItem("pis_opportunity_id");
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#eef2ff", fontFamily: "Inter, sans-serif" }}>
 
@@ -86,17 +129,17 @@ export default function IntakeStage() {
       <div style={{ width: "240px", background: "white", borderRight: "1px solid #e2e8f0" }}>
         <div style={{ padding: "35px 25px" }}>
           <h1 style={{ color: "#2563eb", fontSize: "32px", lineHeight: "44px", fontWeight: "800" }}>
-            🚀 Proposal<br />Intelligence
+             Proposal<br />Intelligence
           </h1>
         </div>
 
         <div style={{ padding: "20px" }}>
-          <div style={menuActive}>📄 New Opportunity</div>
-          <div style={menuStyle} onClick={() => navigate("/questions")}>❓ Questions</div>
-          <div style={menuStyle} onClick={() => navigate("/mapping")}>🧠 Competency Mapping</div>
-          <div style={menuStyle} onClick={() => navigate("/architecture")}>🏗️ Architecture</div>
-          <div style={menuStyle} onClick={() => navigate("/approach")}>📝 Approach Note</div>
-          <div style={menuStyle} onClick={() => navigate("/score")}>📈 Proposal Score</div>
+          <div style={menuActive}> New Opportunity</div>
+          <div style={menuStyle} onClick={() => navigate("/questions")}> Questions</div>
+          <div style={menuStyle} onClick={() => navigate("/mapping")}> Competency Mapping</div>
+          <div style={menuStyle} onClick={() => navigate("/architecture")}> Architecture</div>
+          <div style={menuStyle} onClick={() => navigate("/approach")}> Approach Note</div>
+          <div style={menuStyle} onClick={() => navigate("/score")}> Proposal Score</div>
           <div style={{ ...menuStyle, marginTop: "40px", color: "#94a3b8" }} onClick={() => navigate("/dashboard")}>
             ← Dashboard
           </div>
@@ -107,25 +150,41 @@ export default function IntakeStage() {
       <div style={{ flex: 1, padding: "40px" }}>
         <div style={{ background: "white", borderRadius: "28px", padding: "40px", border: "1px solid #dbe4ff" }}>
 
-          <h1 style={{ fontSize: "48px", marginBottom: "10px", color: "#0f172a" }}>
-            New Opportunity
-          </h1>
-          <p style={{ color: "#64748b", marginBottom: "40px", fontSize: "16px" }}>
-            Fill in the details and paste the client brief. Claude will interpret it in seconds.
-          </p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: "48px", marginBottom: "10px", color: "#0f172a" }}>
+                New Opportunity
+              </h1>
+              <p style={{ color: "#64748b", marginBottom: "40px", fontSize: "16px" }}>
+                Fill in the details and paste the client brief.
+              </p>
+            </div>
+
+            {/* Only shown once something has actually been analysed, so the
+                user can deliberately start a different opportunity without
+                losing the current one by accident. */}
+            {analysis && (
+              <button
+                onClick={handleStartNew}
+                style={{ padding: "10px 18px", borderRadius: "12px", border: "1px solid #e2e8f0", background: "white", color: "#64748b", fontWeight: "600", fontSize: "13.5px", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                + Start a different opportunity
+              </button>
+            )}
+          </div>
 
           {/* BASICS */}
           <h2 style={sectionTitle}>Opportunity Basics</h2>
           <div style={gridStyle}>
-            <input name="title" placeholder="Opportunity title" style={inputStyle} onChange={handleChange} />
-            <input name="client" placeholder="Client name *" style={inputStyle} onChange={handleChange} />
-            <input name="organisation" placeholder="Organisation" style={inputStyle} onChange={handleChange} />
-            <input name="industry" placeholder="Industry" style={inputStyle} onChange={handleChange} />
+            <input name="title" value={formData.title} placeholder="Opportunity title" style={inputStyle} onChange={handleChange} />
+            <input name="client" value={formData.client} placeholder="Client name *" style={inputStyle} onChange={handleChange} />
+            <input name="organisation" value={formData.organisation} placeholder="Organisation" style={inputStyle} onChange={handleChange} />
+            <input name="industry" value={formData.industry} placeholder="Industry" style={inputStyle} onChange={handleChange} />
           </div>
 
           {/* CLIENT EMAIL */}
           <div style={cardStyle}>
-            <h3 style={cardTitle}>📧 Client Email / RFP</h3>
+            <h3 style={cardTitle}> Client Email / RFP</h3>
             <textarea
               name="brief"
               value={formData.brief}
@@ -138,7 +197,7 @@ export default function IntakeStage() {
 
           {/* NOTES */}
           <div style={cardStyle}>
-            <h3 style={cardTitle}>📝 Meeting Notes</h3>
+            <h3 style={cardTitle}> Meeting Notes</h3>
             <textarea
               name="meetingNotes"
               value={formData.meetingNotes}
@@ -152,10 +211,10 @@ export default function IntakeStage() {
           {/* TAGS */}
           <h2 style={sectionTitle}>Tags</h2>
           <div style={gridStyle}>
-            <input name="seniority" placeholder="Seniority (e.g. Senior Manager)" style={inputStyle} onChange={handleChange} />
-            <input name="capability" placeholder="Capability focus" style={inputStyle} onChange={handleChange} />
-            <input name="duration" placeholder="Duration (e.g. 3 days)" style={inputStyle} onChange={handleChange} />
-            <input name="delivery" placeholder="Delivery (e.g. Residential)" style={inputStyle} onChange={handleChange} />
+            <input name="seniority" value={formData.seniority} placeholder="Seniority (e.g. Senior Manager)" style={inputStyle} onChange={handleChange} />
+            <input name="capability" value={formData.capability} placeholder="Capability focus" style={inputStyle} onChange={handleChange} />
+            <input name="duration" value={formData.duration} placeholder="Duration (e.g. 3 days)" style={inputStyle} onChange={handleChange} />
+            <input name="delivery" value={formData.delivery} placeholder="Delivery (e.g. Residential)" style={inputStyle} onChange={handleChange} />
           </div>
 
           {/* BUTTONS */}
@@ -180,10 +239,15 @@ export default function IntakeStage() {
             <div style={{ marginTop: "40px", padding: "30px", background: "#f8fbff", borderRadius: "24px", border: "2px solid #dbe4ff" }}>
 
               <h2 style={{ marginBottom: "10px", color: "#0f172a" }}>
-                🚀 Brief Interpreted Successfully
+                 Brief Interpreted Successfully
               </h2>
               <p style={{ color: "#64748b", marginBottom: "30px" }}>
                 Opportunity ID: <strong>{analysis.opportunity_id}</strong> · Saved to database ✅
+                {analysis.reused && (
+                  <span style={{ marginLeft: "10px", color: "#7c3aed", fontWeight: "600" }}>
+                    (same brief as before — reused existing opportunity, no new AI cost)
+                  </span>
+                )}
               </p>
 
               {/* GOALS */}
@@ -264,7 +328,6 @@ export default function IntakeStage() {
               <div style={{ marginTop: "30px", padding: "20px", background: "linear-gradient(135deg,#2563eb,#7c3aed)", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <p style={{ color: "white", fontWeight: "700", fontSize: "18px" }}>Brief interpreted! Ready for next step.</p>
-                  <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px" }}>Generate discovery questions to prepare for your client call.</p>
                 </div>
                 <button onClick={handleNext} style={{ background: "white", color: "#2563eb", border: "none", padding: "14px 28px", borderRadius: "12px", fontWeight: "700", fontSize: "16px", cursor: "pointer" }}>
                   Generate Questions →

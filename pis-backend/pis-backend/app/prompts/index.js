@@ -81,6 +81,64 @@ Return EXACTLY this JSON:
 }`
   },
 
+  // ── AGENT 2b: Answer Resolver (NEW) ────────────
+  // Used by the 3-option answer column on the Questions page.
+  // mode: 'from_brief'       -> Option 1: pull the answer straight out of the brief text
+  // mode: 'draft_assumption' -> Option 3: draft a reasonable first-pass assumption
+  answer_resolution: {
+    version: 'v1',
+    model: 'claude-haiku-4-5',
+    max_tokens: 300,
+    temperature: 0.2,
+    system: `You are a senior Learning Architect at a top business school, helping a colleague
+fill in discovery-question answers before a client call.
+Always respond with valid JSON only. No markdown, no explanation, no backticks.`,
+    user: (mode, question, briefText) => {
+      if (mode === 'from_brief') {
+        return `Read the client brief below and check if it already answers this discovery question.
+
+CLIENT BRIEF:
+"${briefText}"
+
+QUESTION: "${question}"
+
+Return EXACTLY this JSON:
+{
+  "found": true,
+  "answer": "the answer, quoted or closely paraphrased from the brief, 1-3 sentences",
+  "source_snippet": "the exact part of the brief that supports this answer"
+}
+
+If the brief does NOT contain a clear answer to this question, return:
+{
+  "found": false,
+  "answer": null,
+  "source_snippet": null
+}
+
+Be strict — only set found:true if the brief genuinely addresses this question. Do not invent information.`;
+      }
+
+      // mode === 'draft_assumption'
+      return `The client brief below does NOT clearly answer this discovery question.
+Draft a sensible FIRST-DRAFT ASSUMPTION a Learning Architect could propose to the client,
+based on standard practice for similar executive education programmes and whatever context
+the brief does provide. This is a working assumption, not a confirmed fact.
+
+CLIENT BRIEF:
+"${briefText}"
+
+QUESTION: "${question}"
+
+Return EXACTLY this JSON:
+{
+  "draft_answer": "a reasonable 1-3 sentence first-draft assumption, written as a proposal would state it (e.g. 'We assume...' / 'Our working assumption is...')",
+  "confidence": "low | medium | high",
+  "needs_validation": true
+}`;
+    }
+  },
+
   // ── AGENT 3: Competency Mapper ─────────────────
   competency_mapping: {
     version: 'v1',

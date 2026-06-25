@@ -9,6 +9,7 @@ const { writeApproachNote } = require('../services/approachNoteService');
 const { scoreProposal } = require('../services/scoringService');
 const { mapCompetencies } = require('../services/competencyService');
 const { recommendModules } = require('../services/moduleService');
+const { resolveFromBrief, draftAssumption } = require('../services/answerResolutionService');
 
 // ── POST /api/opportunities ───────────────────────
 router.post('/',
@@ -22,6 +23,30 @@ router.post('/',
     }
 
     try {
+      // ── Reuse check: same tenant + same client_name + same brief_text ──
+      // If this exact brief has already been analysed, return the EXISTING
+      // opportunity (with its existing interpretation, questions, answers, etc.)
+      // instead of creating a duplicate and re-running the AI agents.
+      const existing = await Opportunity.findOne({
+        tenant_id: req.user.id,
+        client_name,
+        brief_text
+      }).sort({ createdAt: -1 });
+
+      if (existing) {
+        console.log(`♻️  Reusing existing opportunity for ${client_name} (same brief already analysed)`);
+        return res.status(200).json({
+          success: true,
+          reused: true,
+          opportunity_id: existing._id,
+          client_name: existing.client_name,
+          interpreted: existing.interpreted,
+          next_step: existing.questions?.length
+            ? `Questions already generated — go straight to the Questions page`
+            : `POST /api/opportunities/${existing._id}/questions`
+        });
+      }
+
       const opportunity = await Opportunity.create({
         tenant_id: req.user.id,
         client_name,
@@ -35,7 +60,6 @@ router.post('/',
 
       const interpreted = await interpretBrief(brief_text, req.user.id, opportunity._id);
 
-      // ✅ FIXED: use findByIdAndUpdate to avoid version conflicts
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { interpreted, status: 'interpreted' } },
@@ -44,6 +68,7 @@ router.post('/',
 
       res.status(201).json({
         success: true,
+        reused: false,
         opportunity_id: updated._id,
         client_name: updated.client_name,
         interpreted,
@@ -76,11 +101,19 @@ router.post('/:id/questions',
 
       // ✅ GUARD: already has questions, don't re-run
       if (opportunity.questions && opportunity.questions.length > 0) {
+        const groupedExisting = opportunity.questions.reduce((acc, q) => {
+          if (!acc[q.theme_code]) acc[q.theme_code] = [];
+          acc[q.theme_code].push(q);
+          return acc;
+        }, {});
+
         return res.json({
           success: true,
           message: 'Questions already generated',
-          questions: opportunity.questions,
-          count: opportunity.questions.length
+          opportunity_id: opportunity._id,
+          client_name: opportunity.client_name,
+          total_questions: opportunity.questions.length,
+          questions_by_theme: groupedExisting
         });
       }
 
@@ -88,7 +121,6 @@ router.post('/:id/questions',
 
       const questions = await generateQuestions(opportunity.interpreted, req.user.id, opportunity._id);
 
-      // ✅ FIXED: use findByIdAndUpdate
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { questions, status: 'questions_ready' } },
@@ -163,13 +195,119 @@ router.patch('/:id/questions/:questionIndex',
         return res.status(400).json({ error: 'Invalid question index' });
       }
 
-      const { answer_text, status, capture_state, question_text } = req.body;
-      if (answer_text !== undefined)   opportunity.questions[index].answer_text   = answer_text;
-      if (status !== undefined)        opportunity.questions[index].status        = status;
-      if (capture_state !== undefined) opportunity.questions[index].capture_state = capture_state;
-      if (question_text !== undefined) opportunity.questions[index].question_text = question_text;
+      const { answer_text, status, capture_state, question_text, answer_source, framework_used } = req.body;
+      if (answer_text !== undefined)    opportunity.questions[index].answer_text    = answer_text;
+      if (status !== undefined)         opportunity.questions[index].status         = status;
+      if (capture_state !== undefined)  opportunity.questions[index].capture_state  = capture_state;
+      if (question_text !== undefined)  opportunity.questions[index].question_text  = question_text;
+      if (answer_source !== undefined)  opportunity.questions[index].answer_source  = answer_source;
+      if (framework_used !== undefined) opportunity.questions[index].framework_used = framework_used;
 
-      // questions subdoc patch still needs .save() — that's fine here since it's a single targeted update
+      await opportunity.save();
+
+      res.json({ success: true, question: opportunity.questions[index] });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// ── POST /api/opportunities/:id/questions/:questionIndex/resolve ──
+// Powers the 3-option answer column.
+// body: { mode: 'from_brief' | 'flagged_to_client' | 'draft_assumption' }
+router.post('/:id/questions/:questionIndex/resolve',
+  protect,
+  requireRole('admin', 'editor'),
+  async (req, res) => {
+    try {
+      const opportunity = await Opportunity.findById(req.params.id);
+      if (!opportunity) return res.status(404).json({ error: 'Opportunity not found' });
+
+      const index = parseInt(req.params.questionIndex);
+      if (index < 0 || index >= opportunity.questions.length) {
+        return res.status(400).json({ error: 'Invalid question index' });
+      }
+
+      const { mode } = req.body;
+      if (!['from_brief', 'flagged_to_client', 'draft_assumption'].includes(mode)) {
+        return res.status(400).json({ error: 'mode must be from_brief, flagged_to_client, or draft_assumption' });
+      }
+
+      const question = opportunity.questions[index];
+
+      if (mode === 'flagged_to_client') {
+        question.answer_source = 'flagged_to_client';
+        question.capture_state = 'pending_client';
+        question.answer_text = question.answer_text || 'Not addressed in client brief — flagged to revert to client for input.';
+        await opportunity.save();
+        return res.json({ success: true, mode, question });
+      }
+
+      if (mode === 'from_brief') {
+        console.log(`🤖 Resolving answer from brief for Q${index}...`);
+        const result = await resolveFromBrief(
+          question.question_text,
+          opportunity.brief_text,
+          req.user.id,
+          opportunity._id
+        );
+
+        if (!result.found) {
+          return res.json({
+            success: true,
+            mode,
+            found: false,
+            message: 'Brief does not clearly answer this question. Try "Draft assumption" or flag it to the client instead.'
+          });
+        }
+
+        question.answer_source = 'from_brief';
+        question.capture_state = 'answered';
+        question.answer_text = result.answer;
+        await opportunity.save();
+
+        return res.json({ success: true, mode, found: true, source_snippet: result.source_snippet, question });
+      }
+
+      if (mode === 'draft_assumption') {
+        console.log(`🤖 Drafting assumption for Q${index}...`);
+        const result = await draftAssumption(
+          question.question_text,
+          opportunity.brief_text,
+          req.user.id,
+          opportunity._id
+        );
+
+        question.answer_source = 'draft_assumption';
+        question.capture_state = 'draft';
+        question.answer_text = result.draft_answer;
+        await opportunity.save();
+
+        return res.json({ success: true, mode, confidence: result.confidence, question });
+      }
+
+    } catch (err) {
+      console.error('Error resolving answer:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// ── PATCH /api/opportunities/:id/questions/:questionIndex/framework ──
+router.patch('/:id/questions/:questionIndex/framework',
+  protect,
+  requireRole('admin', 'editor'),
+  async (req, res) => {
+    try {
+      const opportunity = await Opportunity.findById(req.params.id);
+      if (!opportunity) return res.status(404).json({ error: 'Opportunity not found' });
+
+      const index = parseInt(req.params.questionIndex);
+      if (index < 0 || index >= opportunity.questions.length) {
+        return res.status(400).json({ error: 'Invalid question index' });
+      }
+
+      opportunity.questions[index].framework_used = req.body.framework_used ?? null;
       await opportunity.save();
 
       res.json({ success: true, question: opportunity.questions[index] });
@@ -193,7 +331,6 @@ router.post('/:id/competencies',
         return res.status(400).json({ error: 'Run brief interpretation first' });
       }
 
-      // ✅ GUARD: already mapped, don't re-run
       if (opportunity.competencies && opportunity.competencies.length > 0) {
         return res.json({
           success: true,
@@ -210,7 +347,6 @@ router.post('/:id/competencies',
 
       const competencies = await mapCompetencies(opportunity.interpreted, req.user.id, opportunity._id);
 
-      // ✅ FIXED: use findByIdAndUpdate — eliminates version conflict
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { competencies, status: 'competencies_mapped' } },
@@ -247,7 +383,6 @@ router.post('/:id/modules',
         return res.status(400).json({ error: 'Run competency mapping first' });
       }
 
-      // ✅ GUARD: already recommended
       if (opportunity.modules && opportunity.modules.length > 0) {
         return res.json({
           success: true,
@@ -264,7 +399,6 @@ router.post('/:id/modules',
 
       const modules = await recommendModules(opportunity.competencies, req.user.id, opportunity._id);
 
-      // ✅ FIXED: use findByIdAndUpdate
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { modules, status: 'modules_recommended' } },
@@ -304,7 +438,6 @@ router.post('/:id/architecture',
 
       const architecture = await buildArchitecture(opportunity);
 
-      // ✅ FIXED: use findByIdAndUpdate
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { architecture, status: 'architecture_built' } },
@@ -342,7 +475,6 @@ router.post('/:id/approach-note',
 
       const approachNote = await writeApproachNote(opportunity);
 
-      // ✅ FIXED: use findByIdAndUpdate
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { approach_note: approachNote, status: 'approach_note_written' } },
@@ -381,7 +513,6 @@ router.post('/:id/score',
       const score = await scoreProposal(opportunity);
       const status = score.can_export ? 'ready_to_export' : 'needs_improvement';
 
-      // ✅ FIXED: use findByIdAndUpdate
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
         { $set: { score, status } },

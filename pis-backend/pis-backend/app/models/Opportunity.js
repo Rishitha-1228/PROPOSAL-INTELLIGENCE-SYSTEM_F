@@ -18,20 +18,29 @@ const OpportunitySchema = new mongoose.Schema({
 
   // Agent 2 output — Question Generator
   questions: [{
-    theme_code:    String,
-    question_text: String,
-    rationale:     String,
-    status:        { type: String, default: 'selected' },
-    answer_text:   String,
-    capture_state: { type: String, default: 'not_asked' }
+    theme_code:     String,
+    question_text:  String,
+    rationale:      String,
+    status:         { type: String, default: 'selected' },
+    answer_text:    String,
+    capture_state:  { type: String, default: 'not_asked' },
+
+    // ── answer-source tracking ────────────────
+    // 'from_brief'        -> Option 1: answer pulled from client requirement doc
+    // 'flagged_to_client' -> Option 2: not in brief, needs to go back to client
+    // 'draft_assumption'  -> Option 3: AI-drafted assumption / first-draft answer
+    answer_source:  { type: String, enum: ['from_brief', 'flagged_to_client', 'draft_assumption', null], default: null },
+
+    // ── framework tagging ──
+    framework_used: { type: String, default: null }
   }],
 
-  // Agent 3 output — Competency Mapper ✅ FIXED: added cluster + definition
+  // Agent 3 output — Competency Mapper
   competencies: [{
     competency_id:   String,
     competency_name: String,
-    cluster:         String,   // ← ADD THIS
-    definition:      String,   // ← ADD THIS
+    cluster:         String,
+    definition:      String,
     fit_score:       Number,
     rationale:       String
   }],
