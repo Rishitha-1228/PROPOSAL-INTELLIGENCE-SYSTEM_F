@@ -237,7 +237,29 @@ const handleDecision = (competencyId, decision) => {
               {c.cluster && <span style={{ fontSize: "12px", color: "#7c3aed", background: "#ede9fe", padding: "3px 8px", borderRadius: "10px", marginTop: "8px", display: "inline-block" }}>{c.cluster}</span>}
             </div>
           ))}
-          
+          <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: "30px",
+  }}
+>
+  <button
+    onClick={() => navigate("/architecture")}
+    style={{
+      padding: "12px 24px",
+      background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+      color: "white",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "16px",
+      fontWeight: "600",
+      cursor: "pointer",
+    }}
+  >
+    Next →
+  </button>
+</div>
   
           
         </div>
