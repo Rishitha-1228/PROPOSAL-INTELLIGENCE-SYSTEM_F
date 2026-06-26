@@ -433,6 +433,17 @@ router.post('/:id/architecture',
       if (!opportunity.modules?.length) {
         return res.status(400).json({ error: 'Run module recommendation first' });
       }
+      // Return cached result if already built, unless force regenerate requested
+if (opportunity.architecture?.phases?.length > 0 && req.query.regenerate !== 'true') {
+  return res.json({
+    success: true,
+    message: 'Architecture already built',
+    opportunity_id: opportunity._id,
+    client_name: opportunity.client_name,
+    architecture: opportunity.architecture,
+    next_step: `POST /api/opportunities/${opportunity._id}/approach-note`
+  });
+}
 
       console.log(`🤖 Agent 5: Building architecture for ${opportunity.client_name}...`);
 
@@ -470,6 +481,18 @@ router.post('/:id/approach-note',
       if (!opportunity.modules?.length) {
         return res.status(400).json({ error: 'Run module recommendation first' });
       }
+      // Return cached result if already written, unless force regenerate requested
+if (opportunity.approach_note?.sections && req.query.regenerate !== 'true') {
+  return res.json({
+    success: true,
+    message: 'Approach note already written',
+    opportunity_id: opportunity._id,
+    client_name: opportunity.client_name,
+    approach_note: opportunity.approach_note,
+    next_step: `POST /api/opportunities/${opportunity._id}/score`
+  });
+}
+
 
       console.log(`🤖 Agent 6: Writing approach note for ${opportunity.client_name}...`);
 
@@ -507,6 +530,20 @@ router.post('/:id/score',
       if (!opportunity.approach_note?.sections) {
         return res.status(400).json({ error: 'Write approach note first' });
       }
+      // Return cached result if already scored, unless force regenerate requested
+if (opportunity.score?.total_score !== undefined && req.query.regenerate !== 'true') {
+  return res.json({
+    success: true,
+    message: 'Proposal already scored',
+    opportunity_id: opportunity._id,
+    client_name: opportunity.client_name,
+    score: opportunity.score,
+    status: opportunity.status,
+    next_step: opportunity.score.can_export
+      ? 'Proposal ready to export'
+      : 'Fix the gaps listed above then re-score'
+  });
+}
 
       console.log(`🤖 Scoring proposal for ${opportunity.client_name}...`);
 

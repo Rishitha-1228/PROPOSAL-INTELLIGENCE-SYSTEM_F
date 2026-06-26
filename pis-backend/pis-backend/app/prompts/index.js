@@ -1,8 +1,13 @@
 // ── PROMPT REGISTRY ──────────────────────────────
-// Sir's requirement: all prompts live here with versions
+// : all prompts live here with versions
 // Never write prompt strings inside service files
-
+const OUTPUT_RULES = `
+Never use em dashes (—) in your response. Use commas, periods, or rewrite the sentence instead.
+Never mention that you are an AI, a language model, or that this content was AI-generated.
+Never add disclaimers, meta-commentary, or notes about how the response was created.
+Write only the requested content directly.`;
 const PROMPTS = {
+  
 
   // ── AGENT 1: Brief Interpreter ─────────────────
   brief_interpretation: {
@@ -14,7 +19,8 @@ const PROMPTS = {
 Your job is to extract structured information from corporate training briefs.
 Always respond with valid JSON only.
 Never add markdown backticks, never add explanation text.
-Just the raw JSON object.`,
+Just the raw JSON object.
+${OUTPUT_RULES}`,
     user: (briefText) => `Extract structured information from this corporate training brief.
 
 BRIEF:
@@ -40,6 +46,7 @@ Rules:
 - confidence_score: 0-100, how complete the brief is
 - ambiguities: what is unclear or missing`
   },
+  
 
   // ── AGENT 2: Question Generator ────────────────
   question_generation: {
@@ -50,7 +57,8 @@ Rules:
     system: `You are a senior Director of Custom Programmes at a top business school.
 You have 15 years of experience running discovery calls with corporate clients.
 Your questions are sharp, business-anchored, and show deep expertise.
-Always respond with valid JSON only. No markdown, no explanation.`,
+Always respond with valid JSON only. No markdown, no explanation.
+${OUTPUT_RULES}`,
     user: (interpreted) => `Generate discovery questions for a first client call.
 
 OPPORTUNITY CONTEXT:
@@ -92,7 +100,8 @@ Return EXACTLY this JSON:
     temperature: 0.2,
     system: `You are a senior Learning Architect at a top business school, helping a colleague
 fill in discovery-question answers before a client call.
-Always respond with valid JSON only. No markdown, no explanation, no backticks.`,
+Always respond with valid JSON only. No markdown, no explanation, no backticks.
+${OUTPUT_RULES}`,
     user: (mode, question, briefText) => {
       if (mode === 'from_brief') {
         return `Read the client brief below and check if it already answers this discovery question.
@@ -147,7 +156,8 @@ Return EXACTLY this JSON:
     temperature: 0,
     system: `You are an expert in executive education competency frameworks.
 Map training needs to competencies accurately.
-Always respond with valid JSON only. No markdown, no explanation.`,
+Always respond with valid JSON only. No markdown, no explanation.
+${OUTPUT_RULES}`,
     user: (interpreted, competencies) => `Map this training brief to the most relevant competencies.
 
 BRIEF SUMMARY:
@@ -185,7 +195,8 @@ Rules:
     system: `You are an expert executive education programme designer.
 You build clear, logical day-by-day programme architectures.
 Always respond with valid JSON only.
-No markdown, no explanation. Just JSON.`,
+No markdown, no explanation. Just JSON.
+${OUTPUT_RULES}`,
     user: (opportunity) => `Build a day-by-day programme architecture.
 
 CLIENT: ${opportunity.client_name}
@@ -259,7 +270,8 @@ You are writing a custom executive education proposal for a corporate client.
 Your writing is authoritative, specific, and pedagogically grounded.
 Write like a thoughtful senior academic, not like a consultant or AI tool.
 Use concrete language. Avoid buzzwords and vague phrases.
-Always respond with valid JSON only. No markdown, no explanation.`,
+Always respond with valid JSON only. No markdown, no explanation.
+${OUTPUT_RULES}`,
     user: (opportunity) => `Write a complete approach note for this custom programme proposal.
 
 CLIENT: ${opportunity.client_name}
@@ -302,7 +314,8 @@ Critical rules:
     temperature: 0,
     system: `You are an expert proposal evaluator for executive education programmes.
 Evaluate proposals strictly and honestly.
-Always respond with valid JSON only. No markdown, no explanation.`,
+Always respond with valid JSON only. No markdown, no explanation.
+${OUTPUT_RULES}`,
     user: (opportunity) => `Evaluate this executive education proposal.
 
 CLIENT: ${opportunity.client_name}
