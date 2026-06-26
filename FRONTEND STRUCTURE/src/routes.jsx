@@ -7,3 +7,5 @@ export const STAGES = [
   { id: "approach",    label: "Approach Note",      icon: "ti-notes",       desc: "Client-facing narrative" },
   { id: "score",       label: "Proposal Score",     icon: "ti-chart-bar",   desc: "Strength evaluation" },
 ];
+<Route path="/architecture" element={<ArchitectureStage />} />
+
