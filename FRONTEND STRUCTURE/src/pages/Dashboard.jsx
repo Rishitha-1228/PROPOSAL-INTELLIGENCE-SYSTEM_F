@@ -114,12 +114,19 @@ export default function Dashboard() {
 
         {/* BUTTONS */}
         <div style={{ display: 'flex', gap: '20px', marginTop: '28px' }}>
-          <button
-            onClick={() => navigate('/new')}
-            style={{ flex: 1, padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
-          >
-            + New Opportunity
-          </button>
+            <button
+  onClick={() => {
+    // Explicit "start fresh" action from the Dashboard — clear any
+    // in-progress intake form/analysis/opportunity ID, so the New
+    // Opportunity page opens blank instead of restoring old work.
+    localStorage.removeItem('pis_intake_state');
+    localStorage.removeItem('pis_opportunity_id');
+    navigate('/new');
+  }}
+  style={{ flex: 1, padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
+>
+  + New Opportunity
+</button>
           <button
             onClick={loadOpportunities}
             style={{ flex: 1, padding: '18px', borderRadius: '16px', border: '1px solid #dbe2ea', background: 'white', color: '#0f172a', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
