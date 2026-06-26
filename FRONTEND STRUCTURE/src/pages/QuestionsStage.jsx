@@ -249,8 +249,8 @@ export default function QuestionsStage() {
             </button>
           </div>
 
-          {loading && <div style={{ textAlign: "center", padding: "60px", color: "#64748b", fontSize: "18px" }}>🤖 Generating questions with Claude...</div>}
-          {error && <div style={{ color: "red", padding: "20px", background: "#fef2f2", borderRadius: "12px", marginBottom: "20px" }}>⚠️ {error}</div>}
+          {loading && <div style={{ textAlign: "center", padding: "60px", color: "#64748b", fontSize: "18px" }}>Hold On... Generating questions </div>}
+          {error && <div style={{ color: "red", padding: "20px", background: "#fef2f2", borderRadius: "12px", marginBottom: "20px" }}> {error}</div>}
 
           {!loading && questions.length === 0 && !error && (
             <div style={{ textAlign: "center", padding: "60px" }}>
@@ -392,7 +392,7 @@ export default function QuestionsStage() {
 
                       {rs.notice && (
                         <div style={{ fontSize: "12px", color: "#b45309", background: "#fffbeb", padding: "8px 12px", borderRadius: "8px", marginBottom: "10px" }}>
-                          ⚠️ {rs.notice}
+                           {rs.notice}
                         </div>
                       )}
 
