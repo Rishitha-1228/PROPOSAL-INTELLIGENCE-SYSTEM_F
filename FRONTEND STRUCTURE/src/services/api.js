@@ -76,8 +76,8 @@ export const recommendModules = async (id) => {
   return res.data;
 };
 
-export const buildArchitecture = async (id) => {
-  const res = await api.post(`/opportunities/${id}/architecture`);
+export const buildArchitecture = async (id, force = false) => {
+  const res = await api.post(`/opportunities/${id}/architecture${force ? '?regenerate=true' : ''}`);
   return res.data;
 };
 
@@ -86,8 +86,8 @@ export const writeApproachNote = async (id) => {
   return res.data;
 };
 
-export const scoreProposal = async (id) => {
-  const res = await api.post(`/opportunities/${id}/score`);
+export const scoreProposal = async (id, force = false) => {
+  const res = await api.post(`/opportunities/${id}/score${force ? '?regenerate=true' : ''}`);
   return res.data;
 };
 

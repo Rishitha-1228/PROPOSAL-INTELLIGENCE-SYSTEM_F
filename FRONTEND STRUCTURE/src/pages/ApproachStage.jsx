@@ -47,7 +47,7 @@ export default function ApproachStage() {
       }
 
       // Step 3 — Write approach note
-      setLoadingStep("Step 3/3 — Writing approach note with Claude Sonnet...");
+      setLoadingStep("Step 3/3 — Writing approach note...");
       const data = await writeApproachNote(opportunityId);
 
       const s = data.approach_note?.sections || data.sections;
@@ -86,7 +86,7 @@ export default function ApproachStage() {
         <div style={{ background: "white", borderRadius: "28px", padding: "40px", border: "1px solid #dbe4ff" }}>
 
           <h1 style={{ fontSize: "42px", color: "#0f172a", fontWeight: "800", marginBottom: "10px" }}>Approach Note</h1>
-          <p style={{ color: "#64748b", marginBottom: "30px" }}>Claude Sonnet writes a 7-section professional proposal document</p>
+          <p style={{ color: "#64748b", marginBottom: "30px" }}>A 7-section professional proposal document</p>
 
           {/* LOADING */}
           {loading && (

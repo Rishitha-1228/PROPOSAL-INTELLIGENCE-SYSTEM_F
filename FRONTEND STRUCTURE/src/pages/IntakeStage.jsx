@@ -242,7 +242,6 @@ export default function IntakeStage() {
                  Brief Interpreted Successfully
               </h2>
               <p style={{ color: "#64748b", marginBottom: "30px" }}>
-                Opportunity ID: <strong>{analysis.opportunity_id}</strong> · Saved to database ✅
                 {analysis.reused && (
                   <span style={{ marginLeft: "10px", color: "#7c3aed", fontWeight: "600" }}>
                     (same brief as before — reused existing opportunity, no new AI cost)

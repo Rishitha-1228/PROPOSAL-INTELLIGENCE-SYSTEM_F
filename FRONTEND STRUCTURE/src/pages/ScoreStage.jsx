@@ -76,7 +76,7 @@ export default function ScoreStage() {
                 Evaluating proposal strength...
               </p>
               <p style={{ color: "#94a3b8", fontSize: "14px", marginTop: "8px" }}>
-                Claude is scoring your proposal across 6 dimensions
+                Scoring your proposal across 6 dimensions
               </p>
             </div>
           )}
