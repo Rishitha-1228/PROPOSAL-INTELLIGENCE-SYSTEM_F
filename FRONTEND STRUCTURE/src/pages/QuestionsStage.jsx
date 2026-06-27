@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { generateQuestions, resolveAnswer, updateQuestionAnswer } from "../services/api";
-
+import ProcessingState from "../components/ProcessingState";
 // One framework tag per THEME (e.g. all "Business Context & Strategy" questions
 // share one framework). Labeling only — no AI involved.
 const FRAMEWORK_OPTIONS = [
@@ -248,8 +248,19 @@ export default function QuestionsStage() {
               {liveMode ? " Live Mode ON" : " Live Mode OFF"}
             </button>
           </div>
+          {loading && (
+  <ProcessingState
+    steps={[
+      "Reviewing the brief",
+      "Identifying themes to probe",
+      "Drafting discovery questions",
+      "Organising by category"
+    ]}
+    estimate="Usually takes 10-15 seconds"
+  />
+)}
 
-          {loading && <div style={{ textAlign: "center", padding: "60px", color: "#64748b", fontSize: "18px" }}>Hold On... Generating questions </div>}
+
           {error && <div style={{ color: "red", padding: "20px", background: "#fef2f2", borderRadius: "12px", marginBottom: "20px" }}> {error}</div>}
 
           {!loading && questions.length === 0 && !error && (

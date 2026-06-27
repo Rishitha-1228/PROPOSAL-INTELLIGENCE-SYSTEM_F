@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyseBrief } from "../services/api";
-
+import ProcessingState from "../components/ProcessingState";
 // Everything the user has typed/seen on this page is saved under this key,
 // so navigating away (e.g. to Questions) and coming back restores it exactly.
 const INTAKE_STORAGE_KEY = "pis_intake_state";

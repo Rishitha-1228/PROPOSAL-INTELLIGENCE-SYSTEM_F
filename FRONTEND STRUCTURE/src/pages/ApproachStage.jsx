@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { writeApproachNote, recommendModules, buildArchitecture } from "../services/api";
-
+import ProcessingState from "../components/ProcessingState";
 export default function ApproachStage() {
   const navigate = useNavigate();
   const [sections, setSections] = useState(null);

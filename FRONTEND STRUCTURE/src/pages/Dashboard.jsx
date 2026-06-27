@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getOpportunities } from '../services/api';
-
+import ProcessingState from "../components/ProcessingState";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState([]);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { scoreProposal } from "../services/api";
-
+import ProcessingState from "../components/ProcessingState";
 export default function ScoreStage() {
   const navigate = useNavigate();
   const [score, setScore] = useState(null);

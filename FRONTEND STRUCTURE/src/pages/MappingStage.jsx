@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { mapCompetencies } from "../services/api";
-
+import ProcessingState from "../components/ProcessingState";
 
 export default function MappingStage() {
   const navigate = useNavigate();
@@ -129,8 +129,17 @@ const handleDecision = (competencyId, decision) => {
 </div>
         
 
-          {loading && <div style={{ textAlign: "center", padding: "60px", color: "#64748b" }}> Mapping competencies </div>}
-          {error && <div style={{ color: "red", padding: "20px", background: "#fef2f2", borderRadius: "12px", marginBottom: "20px" }}> {error}</div>}
+{loading && (
+  <ProcessingState
+    steps={[
+      "Reading goals and themes",
+      "Scanning the competency framework",
+      "Scoring relevance",
+      "Ranking top matches"
+    ]}
+    estimate="Usually takes 8-12 seconds"
+  />
+)}          {error && <div style={{ color: "red", padding: "20px", background: "#fef2f2", borderRadius: "12px", marginBottom: "20px" }}> {error}</div>}
 
           {competencies.map((c, i) => (
             <div key={i} style={{ background: "#f8fafc", borderRadius: "16px", padding: "24px", marginBottom: "16px", border: "1px solid #e2e8f0" }}>

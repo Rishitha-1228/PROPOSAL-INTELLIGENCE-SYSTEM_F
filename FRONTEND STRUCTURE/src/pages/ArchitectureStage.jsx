@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-
+import ProcessingState from "../components/ProcessingState";
 export default function ArchitectureStage() {
 
   const navigate = useNavigate();
