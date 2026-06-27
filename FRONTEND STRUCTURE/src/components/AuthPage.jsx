@@ -99,7 +99,7 @@ export default function AuthPage() {
       {/* LEFT PANEL */}
       <div className="left-panel">
         <div>
-          <div className="logo">🚀</div>
+          
           <h1>Proposal Intelligence Platform</h1>
           <p>AI-powered proposal and competency intelligence platform for enterprise teams.</p>
         </div>
@@ -108,21 +108,21 @@ export default function AuthPage() {
             className={selectedRole === 'editor' ? 'role-card active-role' : 'role-card'}
             onClick={() => { setSelectedRole('editor'); setSignupData({ ...signupData, role: 'editor' }); }}
           >
-            <h3>💼 BD Manager</h3>
+            <h3> BD Manager</h3>
             <p>Manage opportunities, proposals and AI workflows.</p>
           </div>
           <div
             className={selectedRole === 'admin' ? 'role-card active-role' : 'role-card'}
             onClick={() => { setSelectedRole('admin'); setSignupData({ ...signupData, role: 'admin' }); }}
           >
-            <h3>👑 Director</h3>
+            <h3> Director</h3>
             <p>Full access — manage team, data, and analytics.</p>
           </div>
           <div
             className={selectedRole === 'viewer' ? 'role-card active-role' : 'role-card'}
             onClick={() => { setSelectedRole('viewer'); setSignupData({ ...signupData, role: 'viewer' }); }}
           >
-            <h3>🎓 Faculty</h3>
+            <h3> Faculty</h3>
             <p>Review proposals and approve approach notes.</p>
           </div>
         </div>
@@ -162,8 +162,11 @@ export default function AuthPage() {
               onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
-            <button onClick={handleLogin} disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+            <button className="submit-btn" onClick={handleLogin} disabled={loading}>
+              <span>
+                {loading && <span className="loader" />}
+                {loading ? 'Signing in…' : 'Sign In'}
+              </span>
             </button>
           </div>
         ) : (
@@ -193,8 +196,11 @@ export default function AuthPage() {
               value={signupData.password}
               onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
             />
-            <button onClick={handleSignup} disabled={loading}>
-              {loading ? 'Creating...' : 'Create Account'}
+            <button className="submit-btn" onClick={handleSignup} disabled={loading}>
+              <span>
+                {loading && <span className="loader" />}
+                {loading ? 'Creating…' : 'Create Account'}
+              </span>
             </button>
           </div>
         )}
