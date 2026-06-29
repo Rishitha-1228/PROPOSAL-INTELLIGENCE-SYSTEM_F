@@ -220,7 +220,7 @@ export default function IntakeStage() {
           {/* BUTTONS */}
           <div style={{ display: "flex", gap: "20px", marginTop: "30px" }}>
             <button onClick={handleAnalyse} style={analyseButton} disabled={loading}>
-              {loading ? "⏳ Analysing brief..." : "✨ Analyse Brief"}
+              {loading ? " Analysing brief..." : " Analyse Brief"}
             </button>
             <button onClick={handleNext} style={nextButton}>
               Next → Questions
@@ -230,7 +230,7 @@ export default function IntakeStage() {
           {/* ERROR */}
           {error && (
             <p style={{ color: "red", marginTop: "20px", padding: "12px", background: "#fef2f2", borderRadius: "10px" }}>
-              ⚠️ {error}
+               {error}
             </p>
           )}
 
@@ -251,7 +251,7 @@ export default function IntakeStage() {
 
               {/* GOALS */}
               <div style={aiCard}>
-                <h3 style={{ marginBottom: "16px", color: "#2563eb" }}>🎯 Goals Detected</h3>
+                <h3 style={{ marginBottom: "16px", color: "#2563eb" }}>Goals Detected</h3>
                 <ul style={{ paddingLeft: "20px" }}>
                   {analysis.interpreted?.goals?.map((goal, i) => (
                     <li key={i} style={{ marginBottom: "8px", color: "#334155" }}>{goal}</li>
@@ -261,13 +261,13 @@ export default function IntakeStage() {
 
               {/* AUDIENCE */}
               <div style={{ ...aiCard, marginTop: "20px" }}>
-                <h3 style={{ marginBottom: "16px", color: "#7c3aed" }}>👥 Audience</h3>
+                <h3 style={{ marginBottom: "16px", color: "#7c3aed" }}>Audience</h3>
                 <p style={{ color: "#334155" }}>{analysis.interpreted?.audience}</p>
               </div>
 
               {/* THEMES */}
               <div style={{ ...aiCard, marginTop: "20px" }}>
-                <h3 style={{ marginBottom: "16px", color: "#059669" }}>🏷️ Themes</h3>
+                <h3 style={{ marginBottom: "16px", color: "#059669" }}>Themes</h3>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
                   {analysis.interpreted?.themes?.map((theme, i) => (
                     <span key={i} style={{ padding: "6px 14px", background: "#dcfce7", color: "#166534", borderRadius: "20px", fontSize: "14px", fontWeight: "600" }}>
@@ -279,7 +279,7 @@ export default function IntakeStage() {
 
               {/* CONSTRAINTS */}
               <div style={{ ...aiCard, marginTop: "20px" }}>
-                <h3 style={{ marginBottom: "16px", color: "#dc2626" }}>⚠️ Constraints</h3>
+                <h3 style={{ marginBottom: "16px", color: "#dc2626" }}>Constraints</h3>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
                   {analysis.interpreted?.constraints?.map((c, i) => (
                     <span key={i} style={{ padding: "6px 14px", background: "#fef2f2", color: "#dc2626", borderRadius: "20px", fontSize: "14px", fontWeight: "600" }}>
@@ -291,14 +291,14 @@ export default function IntakeStage() {
 
               {/* PEDAGOGICAL POSTURE */}
               <div style={{ ...aiCard, marginTop: "20px" }}>
-                <h3 style={{ marginBottom: "16px", color: "#d97706" }}>📚 Suggested Approach</h3>
+                <h3 style={{ marginBottom: "16px", color: "#d97706" }}> Suggested Approach</h3>
                 <p style={{ color: "#334155" }}>{analysis.interpreted?.pedagogical_posture}</p>
               </div>
 
               {/* CONFIDENCE SCORE */}
               <div style={{ ...aiCard, marginTop: "20px", background: analysis.interpreted?.confidence_score >= 70 ? "#f0fdf4" : "#fef3c7" }}>
                 <h3 style={{ marginBottom: "10px", color: "#0f172a" }}>
-                  📊 Brief Confidence Score: {analysis.interpreted?.confidence_score}/100
+                  Brief Confidence Score: {analysis.interpreted?.confidence_score}/100
                 </h3>
                 <div style={{ background: "#e2e8f0", borderRadius: "10px", height: "12px", overflow: "hidden" }}>
                   <div style={{
