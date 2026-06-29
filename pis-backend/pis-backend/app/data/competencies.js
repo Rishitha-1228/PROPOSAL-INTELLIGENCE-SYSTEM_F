@@ -1,61 +1,64 @@
-
+// Default competency framework — sourced from PIS_Default_Competency_Framework.xlsx
+// This is the system default used automatically for every tenant until they
+// upload their own framework (see competencyFrameworkService.js).
 
 const competencies = [
   // ── CLUSTER 1: Leadership & People Mastery ──
-  { id: 'LPM01', cluster: 'Leadership & People Mastery', name: 'Self-Awareness & Authentic Leadership', definition: 'Understanding one\'s own strengths, values, and impact on others to lead with authenticity and consistency.' },
-  { id: 'LPM02', cluster: 'Leadership & People Mastery', name: 'Team Development & Coaching', definition: 'Building high-performing teams through structured coaching, feedback, and development conversations.' },
-  { id: 'LPM03', cluster: 'Leadership & People Mastery', name: 'Inclusive Leadership', definition: 'Creating environments where diverse perspectives are actively sought, heard, and integrated into decisions.' },
-  { id: 'LPM04', cluster: 'Leadership & People Mastery', name: 'Executive Presence & Personal Brand', definition: 'Projecting credibility, confidence, and gravitas in high-stakes situations and across organisational levels.' },
-  { id: 'LPM05', cluster: 'Leadership & People Mastery', name: 'Leading Through Change', definition: 'Guiding individuals and teams through uncertainty, resistance, and transformation with clarity and empathy.' },
+  { id: 'LPM01', cluster: 'Leadership & People Mastery', name: 'Self-awareness & Reflective Practice', definition: 'The capacity to observe one\'s own patterns, biases, and impact on others, and to learn deliberately from experience.' },
+  { id: 'LPM02', cluster: 'Leadership & People Mastery', name: 'Leading High-Performance Teams', definition: 'Setting direction, designing for psychological safety and accountability, and getting the best out of a diverse team.' },
+  { id: 'LPM03', cluster: 'Leadership & People Mastery', name: 'Coaching & Developing Others', definition: 'Growing people\'s capability through structured coaching, stretch assignments, and timely feedback.' },
+  { id: 'LPM04', cluster: 'Leadership & People Mastery', name: 'Inclusive & Cross-cultural Leadership', definition: 'Leading across cultures, generations, and identities such that every team member contributes their best.' },
+  { id: 'LPM05', cluster: 'Leadership & People Mastery', name: 'Leading Through Change', definition: 'Mobilising people and resources through ambiguity, disruption, and transformation.' },
 
   // ── CLUSTER 2: Strategic & Commercial Thinking ──
-  { id: 'SCT01', cluster: 'Strategic & Commercial Thinking', name: 'Strategic Foresight & Scenario Planning', definition: 'Anticipating future trends, disruptions, and opportunities to position the organisation for long-term advantage.' },
-  { id: 'SCT02', cluster: 'Strategic & Commercial Thinking', name: 'Business Model Innovation', definition: 'Designing, testing, and scaling new ways of creating, delivering, and capturing value.' },
-  { id: 'SCT03', cluster: 'Strategic & Commercial Thinking', name: 'Growth Strategy & New Markets', definition: 'Identifying and pursuing organic and inorganic growth opportunities across geographies and segments.' },
-  { id: 'SCT04', cluster: 'Strategic & Commercial Thinking', name: 'Competitive Intelligence & Positioning', definition: 'Monitoring the competitive landscape and translating insights into differentiated strategic choices.' },
-  { id: 'SCT05', cluster: 'Strategic & Commercial Thinking', name: 'Capital Allocation & Investment Logic', definition: 'Evaluating strategic investments, M&A, and resource allocation decisions using financial and strategic criteria.' },
+  { id: 'SCT01', cluster: 'Strategic & Commercial Thinking', name: 'Business Model Thinking', definition: 'Designing and challenging the logic by which an organisation creates, delivers, and captures value.' },
+  { id: 'SCT02', cluster: 'Strategic & Commercial Thinking', name: 'Competitive Strategy & Industry Analysis', definition: 'Reading the competitive landscape, anticipating moves, and choosing where and how to compete.' },
+  { id: 'SCT03', cluster: 'Strategic & Commercial Thinking', name: 'Growth Strategy & New Markets', definition: 'Identifying, sizing, and prioritising growth opportunities — organic, M&A, and partnerships.' },
+  { id: 'SCT04', cluster: 'Strategic & Commercial Thinking', name: 'Capital Allocation & Portfolio Choices', definition: 'Deciding where to invest, divest, harvest, or experiment — and explaining why.' },
+  { id: 'SCT05', cluster: 'Strategic & Commercial Thinking', name: 'Long-range Strategic Planning', definition: 'Looking 3–10 years out and shaping resource allocation, partnerships, and capabilities accordingly.' },
 
   // ── CLUSTER 3: Digital & AI Fluency ──
-  { id: 'DAF01', cluster: 'Digital & AI Fluency', name: 'Digital Business Fluency', definition: 'Understanding how digital technologies reshape industries, operating models, and customer expectations.' },
-  { id: 'DAF02', cluster: 'Digital & AI Fluency', name: 'AI for Decision Making', definition: 'Applying AI and machine learning insights to improve the speed, quality, and consistency of business decisions.' },
-  { id: 'DAF03', cluster: 'Digital & AI Fluency', name: 'Data-Driven Culture Leadership', definition: 'Building organisational capability to collect, interpret, and act on data at every level.' },
-  { id: 'DAF04', cluster: 'Digital & AI Fluency', name: 'Technology Strategy & Governance', definition: 'Making informed choices about technology investment, risk, and governance at the enterprise level.' },
-  { id: 'DAF05', cluster: 'Digital & AI Fluency', name: 'AI Ethics & Responsible Innovation', definition: 'Ensuring AI deployments are fair, explainable, and aligned with organisational and societal values.' },
+  { id: 'DAF01', cluster: 'Digital & AI Fluency', name: 'Digital Business Fluency', definition: 'Understanding how digital technologies, platforms, and ecosystems change competitive dynamics.' },
+  { id: 'DAF02', cluster: 'Digital & AI Fluency', name: 'AI for Decision Making', definition: 'Using AI capabilities (predictive models, foundation models, agents) as commercial decision aids.' },
+  { id: 'DAF03', cluster: 'Digital & AI Fluency', name: 'Data-Driven Reasoning', definition: 'Framing questions, interpreting data, and avoiding common analytical errors.' },
+  { id: 'DAF04', cluster: 'Digital & AI Fluency', name: 'Cybersecurity & Digital Risk', definition: 'Understanding cyber and digital risk as a business issue and overseeing risk posture credibly.' },
+  { id: 'DAF05', cluster: 'Digital & AI Fluency', name: 'Leading Digital Transformation', definition: 'Orchestrating people, process, and technology change to realise digital value at scale.' },
 
   // ── CLUSTER 4: Innovation & Change ──
-  { id: 'INC01', cluster: 'Innovation & Change', name: 'Design Thinking & Human-Centred Innovation', definition: 'Applying empathy-driven problem framing and rapid prototyping to create user-centric solutions.' },
-  { id: 'INC02', cluster: 'Innovation & Change', name: 'Agile & Lean Ways of Working', definition: 'Applying iterative, hypothesis-driven methods to accelerate delivery and reduce waste.' },
-  { id: 'INC03', cluster: 'Innovation & Change', name: 'Innovation Portfolio Management', definition: 'Balancing core, adjacent, and transformational innovation bets across different time horizons.' },
-  { id: 'INC04', cluster: 'Innovation & Change', name: 'Change Architecture & Mobilisation', definition: 'Designing and executing large-scale change programmes that shift mindsets, behaviours, and systems.' },
-  { id: 'INC05', cluster: 'Innovation & Change', name: 'Entrepreneurial Mindset & Risk Appetite', definition: 'Cultivating a bias for action, tolerance for ambiguity, and willingness to experiment in established organisations.' },
+  { id: 'INC01', cluster: 'Innovation & Change', name: 'Customer Discovery & Problem Framing', definition: 'Finding and framing real customer problems worth solving before committing build resources.' },
+  { id: 'INC02', cluster: 'Innovation & Change', name: 'Design Thinking & Service Design', definition: 'Using human-centred and service-design methods to imagine and prototype new experiences.' },
+  { id: 'INC03', cluster: 'Innovation & Change', name: 'Experimentation & Lean Startup', definition: 'Running disciplined experiments to validate or invalidate hypotheses cheaply.' },
+  { id: 'INC04', cluster: 'Innovation & Change', name: 'Organisational Change Management', definition: 'Sequencing the people, process, and structural changes needed to land transformation.' },
+  { id: 'INC05', cluster: 'Innovation & Change', name: 'Ambidexterity & Corporate Innovation', definition: 'Running today\'s business and tomorrow\'s business in parallel without one starving the other.' },
 
   // ── CLUSTER 5: Decision Making & Judgement ──
-  { id: 'DMJ01', cluster: 'Decision Making & Judgement', name: 'Complex Problem Structuring', definition: 'Breaking down ambiguous, multi-variable problems into tractable components with clear hypotheses.' },
-  { id: 'DMJ02', cluster: 'Decision Making & Judgement', name: 'Decision Under Uncertainty', definition: 'Making high-quality decisions with incomplete information using probabilistic thinking and scenario analysis.' },
-  { id: 'DMJ03', cluster: 'Decision Making & Judgement', name: 'Ethical Reasoning & Integrity', definition: 'Applying consistent ethical principles to business dilemmas, trade-offs, and stakeholder conflicts.' },
-  { id: 'DMJ04', cluster: 'Decision Making & Judgement', name: 'Critical Thinking & Cognitive Bias Awareness', definition: 'Recognising and mitigating cognitive biases that distort individual and group decision making.' },
-  { id: 'DMJ05', cluster: 'Decision Making & Judgement', name: 'Systems Thinking', definition: 'Understanding how interdependencies and feedback loops within complex systems produce emergent outcomes.' },
+  { id: 'DMJ01', cluster: 'Decision Making & Judgement', name: 'Analytical & Critical Thinking', definition: 'Decomposing problems, evaluating evidence, and reasoning to defensible conclusions.' },
+  { id: 'DMJ02', cluster: 'Decision Making & Judgement', name: 'Decision Under Uncertainty', definition: 'Making timely, defensible decisions when data is incomplete and consequences are large.' },
+  { id: 'DMJ03', cluster: 'Decision Making & Judgement', name: 'Scenario Planning & Futures', definition: 'Imagining multiple plausible futures and stress-testing strategy against each.' },
+  { id: 'DMJ04', cluster: 'Decision Making & Judgement', name: 'Risk & Resilience', definition: 'Identifying, sizing, and pre-empting risks; building organisations that bend rather than break.' },
+  { id: 'DMJ05', cluster: 'Decision Making & Judgement', name: 'Ethical Judgement & Integrity', definition: 'Recognising ethical issues, reasoning through dilemmas, and choosing rightly even when costly.' },
 
   // ── CLUSTER 6: Customer & Market Centricity ──
-  { id: 'CMC01', cluster: 'Customer & Market Centricity', name: 'Customer Insight & Empathy', definition: 'Generating deep understanding of customer needs, behaviours, and unmet pain points through qualitative and quantitative research.' },
-  { id: 'CMC02', cluster: 'Customer & Market Centricity', name: 'Brand Strategy & Positioning', definition: 'Building and sustaining brand equity through consistent positioning, messaging, and customer experience.' },
-  { id: 'CMC03', cluster: 'Customer & Market Centricity', name: 'Commercial Acumen & P&L Ownership', definition: 'Managing revenue, margin, and cost levers to deliver sustainable commercial performance.' },
-  { id: 'CMC04', cluster: 'Customer & Market Centricity', name: 'Go-to-Market Strategy', definition: 'Designing and executing channel, pricing, and distribution strategies that drive market penetration.' },
-  { id: 'CMC05', cluster: 'Customer & Market Centricity', name: 'Key Account & Partnership Management', definition: 'Building strategic relationships with high-value customers and partners to create mutual long-term value.' },
+  { id: 'CMC01', cluster: 'Customer & Market Centricity', name: 'Customer Insight & Empathy', definition: 'Knowing customers as people — their context, jobs, and frustrations — and translating insight into action.' },
+  { id: 'CMC02', cluster: 'Customer & Market Centricity', name: 'Brand & Reputation Strategy', definition: 'Building and protecting brand and reputation as a long-term value driver.' },
+  { id: 'CMC03', cluster: 'Customer & Market Centricity', name: 'Pricing & Value Capture', definition: 'Setting prices and packaging to capture a fair share of customer value created.' },
+  { id: 'CMC04', cluster: 'Customer & Market Centricity', name: 'Marketing & Demand Generation', definition: 'Building demand systems — content, channels, and campaigns — that convert efficiently to revenue.' },
+  { id: 'CMC05', cluster: 'Customer & Market Centricity', name: 'Customer Experience Design', definition: 'Designing end-to-end customer journeys that deliver on the brand promise and create advocates.' },
 
   // ── CLUSTER 7: Operational & Financial Excellence ──
-  { id: 'OFE01', cluster: 'Operational & Financial Excellence', name: 'Financial Statement Fluency', definition: 'Reading, interpreting, and using financial statements to inform operational and strategic decisions.' },
-  { id: 'OFE02', cluster: 'Operational & Financial Excellence', name: 'Operational Excellence & Process Improvement', definition: 'Identifying and eliminating waste, bottlenecks, and variation in core business processes.' },
-  { id: 'OFE03', cluster: 'Operational & Financial Excellence', name: 'Supply Chain & Ecosystem Thinking', definition: 'Optimising end-to-end value chains including suppliers, partners, and last-mile delivery.' },
-  { id: 'OFE04', cluster: 'Operational & Financial Excellence', name: 'Risk Management & Resilience', definition: 'Identifying, quantifying, and mitigating strategic, operational, and financial risks.' },
-  { id: 'OFE05', cluster: 'Operational & Financial Excellence', name: 'ESG & Sustainable Business', definition: 'Integrating environmental, social, and governance considerations into strategy and operations.' },
+  { id: 'OFE01', cluster: 'Operational & Financial Excellence', name: 'Financial Acumen for Non-finance Leaders', definition: 'Reading the financial statements, understanding the drivers, and using finance as a leadership tool.' },
+  { id: 'OFE02', cluster: 'Operational & Financial Excellence', name: 'Performance Management & KPIs', definition: 'Designing measurement systems that drive the right behaviours and surface the right signals.' },
+  { id: 'OFE03', cluster: 'Operational & Financial Excellence', name: 'Operations Strategy & Excellence', definition: 'Designing operations for cost, quality, speed, and flexibility trade-offs that match strategy.' },
+  { id: 'OFE04', cluster: 'Operational & Financial Excellence', name: 'Supply Chain & Procurement', definition: 'Designing resilient, cost-effective supply chains and using procurement strategically.' },
+  { id: 'OFE05', cluster: 'Operational & Financial Excellence', name: 'Project & Programme Leadership', definition: 'Delivering complex, multi-stakeholder programmes on time, on scope, and on value.' },
 
   // ── CLUSTER 8: Influence, Communication & Stakeholder Management ──
-  { id: 'ICS01', cluster: 'Influence, Communication & Stakeholder Management', name: 'Executive Communication & Storytelling', definition: 'Crafting and delivering compelling narratives that inform, inspire, and drive action at senior levels.' },
-  { id: 'ICS02', cluster: 'Influence, Communication & Stakeholder Management', name: 'Negotiation & Persuasion', definition: 'Achieving favourable outcomes in complex, multi-party negotiations while preserving relationships.' },
-  { id: 'ICS03', cluster: 'Influence, Communication & Stakeholder Management', name: 'Stakeholder Mapping & Management', definition: 'Identifying, prioritising, and engaging stakeholders to build alignment and reduce resistance.' },
-  { id: 'ICS04', cluster: 'Influence, Communication & Stakeholder Management', name: 'Cross-Cultural Leadership', definition: 'Leading effectively across cultural, geographic, and organisational boundaries.' },
-  { id: 'ICS05', cluster: 'Influence, Communication & Stakeholder Management', name: 'Boardroom & C-Suite Communication', definition: 'Presenting with authority and precision to boards, investors, and executive committees.' },
+  { id: 'ICS01', cluster: 'Influence, Communication & Stakeholder Management', name: 'Executive Presence & Communication', definition: 'Showing up with clarity, credibility, and warmth in high-stakes settings.' },
+  { id: 'ICS02', cluster: 'Influence, Communication & Stakeholder Management', name: 'Negotiation', definition: 'Creating and claiming value in negotiations across deals, partnerships, and internal arguments.' },
+  { id: 'ICS03', cluster: 'Influence, Communication & Stakeholder Management', name: 'Storytelling with Data', definition: 'Translating analysis into narrative that moves audiences to action.' },
+  { id: 'ICS04', cluster: 'Influence, Communication & Stakeholder Management', name: 'Stakeholder & Coalition Building', definition: 'Mapping stakeholders, building coalitions, and sequencing influence to land important moves.' },
+  { id: 'ICS05', cluster: 'Influence, Communication & Stakeholder Management', name: 'Board & Investor Engagement', definition: 'Engaging boards, investors, and analysts credibly and consistently.' },
+
 ];
 
 module.exports = competencies;

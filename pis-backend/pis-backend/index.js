@@ -18,7 +18,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // ── Routes ────────────────────────────────────
 app.use('/api/auth', require('./app/routes/auth'));
 app.use('/api/opportunities', require('./app/routes/opportunities'));
-
+app.use('/api/competencies', require('./app/routes/competencies'));
 // ── Health check ──────────────────────────────
 app.get('/', (req, res) => {
   res.json({
