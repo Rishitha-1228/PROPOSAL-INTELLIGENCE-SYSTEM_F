@@ -91,6 +91,26 @@ export const scoreProposal = async (id, force = false) => {
   return res.data;
 };
 
+// ── COMPETENCY FRAMEWORK ──────────────────────────
+export const getCompetencyFramework = async () => {
+  const res = await api.get('/competencies');
+  return res.data;
+};
+
+export const uploadCompetencyFramework = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/competencies/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
+export const resetCompetencyFramework = async () => {
+  const res = await api.post('/competencies/reset');
+  return res.data;
+};
+
 // ── Alias ────────────────────────────────────────
 export const analyseBrief = createOpportunity;
 

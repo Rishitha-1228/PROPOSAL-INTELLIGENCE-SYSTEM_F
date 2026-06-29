@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { mapCompetencies } from "../services/api";
-import ProcessingState from "../components/ProcessingState";
+import { mapCompetencies, getCompetencyFramework, uploadCompetencyFramework, resetCompetencyFramework } from "../services/api";import ProcessingState from "../components/ProcessingState";
 
 export default function MappingStage() {
   const navigate = useNavigate();
@@ -13,10 +12,28 @@ export default function MappingStage() {
   const [decision, setDecision] = useState(null);
   const [competencyDecisions, setCompetencyDecisions] = useState({});
 
+  // Framework state — tracks whether mapping is using the built-in
+  // default competency set or a framework the user uploaded themselves.
+  const [frameworkSource, setFrameworkSource] = useState(null);
+  const [frameworkCount, setFrameworkCount] = useState(0);
+  const [frameworkBusy, setFrameworkBusy] = useState(false);
+  const [frameworkMessage, setFrameworkMessage] = useState("");
+  const [frameworkError, setFrameworkError] = useState("");
   useEffect(() => {
     if (!opportunityId) { navigate("/new"); return; }
+    loadFrameworkStatus();
     loadCompetencies();
   }, []);
+
+  const loadFrameworkStatus = async () => {
+    try {
+      const data = await getCompetencyFramework();
+      setFrameworkSource(data.source);
+      setFrameworkCount(data.count);
+    } catch (err) {
+      console.log("Could not load framework status:", err.message);
+    }
+  };
 
   const loadCompetencies = async () => {
     setLoading(true);
@@ -28,15 +45,43 @@ export default function MappingStage() {
     }
     setLoading(false);
   };
-  const handleFileUpload = (e) => {
-  const file = e.target.files[0];
+const handleFrameworkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  if (!file) return;
+    setFrameworkBusy(true);
+    setFrameworkError("");
+    setFrameworkMessage("");
 
-  setSelectedFile(file);
+    try {
+      const data = await uploadCompetencyFramework(file);
+      setFrameworkSource(data.source);
+      setFrameworkCount(data.count);
+      setFrameworkMessage(data.message);
+      loadCompetencies(); // re-map using the newly uploaded framework
+    } catch (err) {
+      setFrameworkError(err?.response?.data?.error || "Could not process that file");
+    }
 
-  console.log("Uploaded file:", file);
-};
+    setFrameworkBusy(false);
+    e.target.value = "";
+  };
+
+  const handleFrameworkReset = async () => {
+    setFrameworkBusy(true);
+    setFrameworkError("");
+    setFrameworkMessage("");
+    try {
+      const data = await resetCompetencyFramework();
+      setFrameworkSource(data.source);
+      setFrameworkCount(data.count);
+      setFrameworkMessage(data.message);
+      loadCompetencies();
+    } catch (err) {
+      setFrameworkError(err?.response?.data?.error || "Could not reset framework");
+    }
+    setFrameworkBusy(false);
+  };
 const handleAccept = () => {
   setDecision("Accepted");
 };
@@ -74,59 +119,81 @@ const handleDecision = (competencyId, decision) => {
       <div style={{ flex: 1, padding: "40px" }}>
         <div style={{ background: "white", borderRadius: "28px", padding: "40px", border: "1px solid #dbe4ff" }}>
 
-         <div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px"
-  }}
->
-  <h1
-    style={{
-      fontSize: "42px",
-      color: "#0f172a",
-      fontWeight: "800",
-      margin: 0
-    }}
-  >
-    Competency Mapping
-  </h1>
+<h1 style={{ fontSize: "42px", color: "#0f172a", fontWeight: "800", margin: 0, marginBottom: "8px" }}>
+            Competency Mapping
+          </h1>
+          <p style={{ color: "#64748b", marginBottom: "24px" }}>Maps the brief to your competency framework</p>
 
-  <label
-    style={{
-      background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-      color: "white",
-      padding: "12px 18px",
-      borderRadius: "12px",
-      cursor: "pointer",
-      fontWeight: "600"
-    }}
-  >
-     Upload File
-     {selectedFile && (
-  <div
-    style={{
-      background: "#eff6ff",
-      border: "1px solid #bfdbfe",
-      borderRadius: "12px",
-      padding: "12px 16px",
-      marginBottom: "20px",
-      color: "#1e40af"
-    }}
-  >
-     {selectedFile.name}
-  </div>
-)}
+          {/* FRAMEWORK SOURCE PANEL */}
+          <div style={{
+            background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "16px",
+            padding: "18px 20px", marginBottom: "28px",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap"
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                <span style={{
+                  fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "20px",
+                  background: frameworkSource === "uploaded" ? "#ede9fe" : "#dbeafe",
+                  color: frameworkSource === "uploaded" ? "#6d28d9" : "#1d4ed8",
+                  textTransform: "uppercase", letterSpacing: "0.04em"
+                }}>
+                  {frameworkSource === "uploaded" ? "Custom framework" : "Default framework"}
+                </span>
+                {frameworkCount > 0 && (
+                  <span style={{ fontSize: "13px", color: "#64748b" }}>{frameworkCount} competencies</span>
+                )}
+              </div>
+              <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                {frameworkSource === "uploaded"
+                  ? "Competency mapping is using your uploaded framework."
+                  : "Competency mapping is using the built-in default framework."}
+              </p>
+            </div>
 
-    <input
-      type="file"
-      accept=".pdf,.doc,.docx,.txt"
-      hidden
-      onChange={handleFileUpload}
-    />
-  </label>
-</div>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              {frameworkSource === "uploaded" && (
+                <button
+                  onClick={handleFrameworkReset}
+                  disabled={frameworkBusy}
+                  style={{
+                    padding: "10px 16px", borderRadius: "10px", border: "1px solid #dbe4ff",
+                    background: "white", color: "#475569", fontWeight: "600", fontSize: "13px",
+                    cursor: frameworkBusy ? "not-allowed" : "pointer"
+                  }}
+                >
+                  Use default instead
+                </button>
+              )}
+
+              <label style={{
+                padding: "10px 18px", borderRadius: "10px",
+                background: frameworkBusy ? "#94a3b8" : "linear-gradient(135deg,#2563eb,#7c3aed)",
+                color: "white", fontWeight: "600", fontSize: "13px",
+                cursor: frameworkBusy ? "not-allowed" : "pointer"
+              }}>
+                {frameworkBusy ? "Processing..." : "Upload your own (.xlsx)"}
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  hidden
+                  disabled={frameworkBusy}
+                  onChange={handleFrameworkUpload}
+                />
+              </label>
+            </div>
+          </div>
+
+          {frameworkMessage && (
+            <div style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534", borderRadius: "10px", padding: "10px 16px", marginBottom: "20px", fontSize: "13px" }}>
+              {frameworkMessage}
+            </div>
+          )}
+          {frameworkError && (
+            <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "10px", padding: "10px 16px", marginBottom: "20px", fontSize: "13px" }}>
+              {frameworkError}
+            </div>
+          )}
         
 
 {loading && (
