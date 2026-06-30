@@ -331,17 +331,20 @@ router.post('/:id/competencies',
         return res.status(400).json({ error: 'Run brief interpretation first' });
       }
 
-      if (opportunity.competencies && opportunity.competencies.length > 0) {
-        return res.json({
-          success: true,
-          message: 'Competencies already mapped',
-          opportunity_id: opportunity._id,
-          client_name: opportunity.client_name,
-          total_competencies: opportunity.competencies.length,
-          competencies: opportunity.competencies,
-          next_step: `POST /api/opportunities/${opportunity._id}/modules`
-        });
-      }
+      // Return cached result unless a fresh remap was explicitly requested
+// (e.g. the user just uploaded a new competency framework, in which
+// case the old cached mapping is no longer meaningful).
+if (opportunity.competencies && opportunity.competencies.length > 0 && req.query.remap !== 'true') {
+  return res.json({
+    success: true,
+    message: 'Competencies already mapped',
+    opportunity_id: opportunity._id,
+    client_name: opportunity.client_name,
+    total_competencies: opportunity.competencies.length,
+    competencies: opportunity.competencies,
+    next_step: `POST /api/opportunities/${opportunity._id}/modules`
+  });
+}
 
       console.log(`🤖 Agent 3: Mapping competencies for ${opportunity.client_name}...`);
 

@@ -6,19 +6,21 @@
 
 const llmClient = require('../llm/client');
 const PROMPTS = require('../prompts');
-const Competency = require('../models/Competency');
+const { getCompetenciesForTenant } = require('./competencyFrameworkService');
 
 const mapCompetencies = async (interpreted, tenantId, opportunityId) => {
 
-  // Step 1: Get all competencies from MongoDB
-  const allCompetencies = await Competency.find({})
-    .select('id name definition cluster');
+  // Step 1: Get this tenant's active competency framework — the system
+  // default (auto-seeded from the real default file on first use) or
+  // whatever framework this tenant has uploaded themselves. This is
+  // strictly scoped to tenantId, never a cross-tenant query.
+  const allCompetencies = await getCompetenciesForTenant(tenantId);
 
   if (!allCompetencies || allCompetencies.length === 0) {
-    throw new Error('No competencies found. Run seed script first.');
+    throw new Error('No competencies found for this account.');
   }
 
-  console.log(`📚 Loaded ${allCompetencies.length} competencies for mapping`);
+  console.log(`📚 Loaded ${allCompetencies.length} competencies for mapping (tenant ${tenantId})`);
 
   // Step 2: Build prompt with competency list
   const prompt = {
@@ -39,7 +41,7 @@ const mapCompetencies = async (interpreted, tenantId, opportunityId) => {
     throw new Error('Competency mapper returned invalid format');
   }
 
-  // Step 5: Enrich with full competency data from MongoDB
+  // Step 5: Enrich with full competency data from this tenant's framework
   const enriched = result.mapped_competencies.map(mapped => {
     const full = allCompetencies.find(c => c.id === mapped.competency_id);
     return {
