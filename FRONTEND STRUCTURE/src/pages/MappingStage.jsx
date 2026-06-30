@@ -35,17 +35,19 @@ export default function MappingStage() {
     }
   };
 
-  const loadCompetencies = async () => {
+  const loadCompetencies = async (force = false) => {
     setLoading(true);
+    setError("");
     try {
-      const data = await mapCompetencies(opportunityId);
+      const data = await mapCompetencies(opportunityId, force);
       setCompetencies(data.competencies || []);
     } catch (err) {
       setError(err?.response?.data?.error || "Failed to map competencies");
     }
     setLoading(false);
   };
-const handleFrameworkUpload = async (e) => {
+
+  const handleFrameworkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -58,7 +60,7 @@ const handleFrameworkUpload = async (e) => {
       setFrameworkSource(data.source);
       setFrameworkCount(data.count);
       setFrameworkMessage(data.message);
-      loadCompetencies(); // re-map using the newly uploaded framework
+      await loadCompetencies(true);
     } catch (err) {
       setFrameworkError(err?.response?.data?.error || "Could not process that file");
     }
@@ -76,7 +78,7 @@ const handleFrameworkUpload = async (e) => {
       setFrameworkSource(data.source);
       setFrameworkCount(data.count);
       setFrameworkMessage(data.message);
-      loadCompetencies();
+      await loadCompetencies(true);
     } catch (err) {
       setFrameworkError(err?.response?.data?.error || "Could not reset framework");
     }

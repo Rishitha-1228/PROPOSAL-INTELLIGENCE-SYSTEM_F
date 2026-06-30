@@ -66,8 +66,8 @@ export const setQuestionFramework = async (opportunityId, questionIndex, framewo
   return res.data;
 };
 
-export const mapCompetencies = async (id) => {
-  const res = await api.post(`/opportunities/${id}/competencies`);
+export const mapCompetencies = async (id, force = false) => {
+  const res = await api.post(`/opportunities/${id}/competencies${force ? '?remap=true' : ''}`);
   return res.data;
 };
 
