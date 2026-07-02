@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { mapCompetencies, getCompetencyFramework, uploadCompetencyFramework, resetCompetencyFramework } from "../services/api";import ProcessingState from "../components/ProcessingState";
+import { mapCompetencies, getCompetencyFramework, uploadCompetencyFramework, resetCompetencyFramework, saveCompetencyDecision } from "../services/api";
+import ProcessingState from "../components/ProcessingState";
 
 export default function MappingStage() {
   const navigate = useNavigate();
@@ -40,7 +41,15 @@ export default function MappingStage() {
     setError("");
     try {
       const data = await mapCompetencies(opportunityId, force);
-      setCompetencies(data.competencies || []);
+      const comps = data.competencies || [];
+      setCompetencies(comps);
+
+      // Restore saved decisions from MongoDB so buttons persist across refreshes
+      const savedDecisions = {};
+      comps.forEach(c => {
+        if (c.decision) savedDecisions[c.competency_id] = c.decision;
+      });
+      setCompetencyDecisions(savedDecisions);
     } catch (err) {
       setError(err?.response?.data?.error || "Failed to map competencies");
     }
@@ -91,12 +100,28 @@ const handleAccept = () => {
 const handleReject = () => {
   setDecision("Rejected");
 };
-const handleDecision = (competencyId, decision) => {
-  setCompetencyDecisions((prev) => ({
-    ...prev,
-    [competencyId]: decision,
-  }));
-};
+const handleDecision = async (competencyId, currentDecision, newDecision) => {
+    // Toggle off if clicking the same decision again (set back to null)
+    const finalDecision = currentDecision === newDecision ? null : newDecision;
+
+    // Update local state immediately so UI responds instantly
+    setCompetencyDecisions((prev) => ({
+      ...prev,
+      [competencyId]: finalDecision,
+    }));
+
+    // Save to backend so it persists and affects downstream pipeline
+    try {
+      await saveCompetencyDecision(opportunityId, competencyId, finalDecision);
+    } catch (err) {
+      console.error('Could not save decision:', err.message);
+      // Roll back local state on failure
+      setCompetencyDecisions((prev) => ({
+        ...prev,
+        [competencyId]: currentDecision,
+      }));
+    }
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#eef2ff", fontFamily: "Inter, sans-serif" }}>
@@ -254,56 +279,30 @@ const handleDecision = (competencyId, decision) => {
     }}
   >
     <button
-      disabled={!!competencyDecisions[c.competency_id]}
-      onClick={() =>
-        handleDecision(c.competency_id, "accepted")
-      }
-      style={{
-        padding: "6px 12px",
-        border: "none",
-        borderRadius: "8px",
-        cursor: competencyDecisions[c.competency_id]
-          ? "not-allowed"
-          : "pointer",
-        background:
-          competencyDecisions[c.competency_id] === "accepted"
-            ? "#15803d"
-            : "#22c55e",
-        color: "white",
-        fontWeight: "600",
-        fontSize: "12px",
-      }}
-    >
-      {competencyDecisions[c.competency_id] === "accepted"
-        ? "Accepted"
-        : "Accept"}
-    </button>
+  onClick={() => handleDecision(c.competency_id, competencyDecisions[c.competency_id], "accepted")}
+  style={{
+    padding: "6px 12px", border: "none", borderRadius: "8px",
+    cursor: "pointer",
+    background: competencyDecisions[c.competency_id] === "accepted" ? "#15803d" : "#22c55e",
+    color: "white", fontWeight: "600", fontSize: "12px",
+    opacity: competencyDecisions[c.competency_id] === "rejected" ? 0.4 : 1
+  }}
+>
+  {competencyDecisions[c.competency_id] === "accepted" ? "✓ Accepted" : "Accept"}
+</button>
 
     <button
-      disabled={!!competencyDecisions[c.competency_id]}
-      onClick={() =>
-        handleDecision(c.competency_id, "rejected")
-      }
-      style={{
-        padding: "6px 12px",
-        border: "none",
-        borderRadius: "8px",
-        cursor: competencyDecisions[c.competency_id]
-          ? "not-allowed"
-          : "pointer",
-        background:
-          competencyDecisions[c.competency_id] === "rejected"
-            ? "#991b1b"
-            : "#ef4444",
-        color: "white",
-        fontWeight: "600",
-        fontSize: "12px",
-      }}
-    >
-      {competencyDecisions[c.competency_id] === "rejected"
-        ? " Rejected"
-        : "Reject"}
-    </button>
+  onClick={() => handleDecision(c.competency_id, competencyDecisions[c.competency_id], "rejected")}
+  style={{
+    padding: "6px 12px", border: "none", borderRadius: "8px",
+    cursor: "pointer",
+    background: competencyDecisions[c.competency_id] === "rejected" ? "#991b1b" : "#ef4444",
+    color: "white", fontWeight: "600", fontSize: "12px",
+    opacity: competencyDecisions[c.competency_id] === "accepted" ? 0.4 : 1
+  }}
+>
+  {competencyDecisions[c.competency_id] === "rejected" ? "✗ Rejected" : "Reject"}
+</button>
   </div>
 </div>
 

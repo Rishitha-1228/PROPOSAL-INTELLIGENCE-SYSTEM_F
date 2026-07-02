@@ -111,6 +111,15 @@ export const resetCompetencyFramework = async () => {
   return res.data;
 };
 
+// ── COMPETENCY DECISIONS ──────────────────────────
+export const saveCompetencyDecision = async (opportunityId, competencyId, decision) => {
+  const res = await api.patch(
+    `/opportunities/${opportunityId}/competencies/${competencyId}/decision`,
+    { decision }
+  );
+  return res.data;
+};
+
 // ── Alias ────────────────────────────────────────
 export const analyseBrief = createOpportunity;
 
