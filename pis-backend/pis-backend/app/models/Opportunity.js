@@ -42,7 +42,11 @@ const OpportunitySchema = new mongoose.Schema({
     cluster:         String,
     definition:      String,
     fit_score:       Number,
-    rationale:       String
+    rationale:       String,
+    // 'accepted' | 'rejected' | null (undecided — treated as accepted by
+    // default downstream, since most mapped competencies are expected to
+    // be kept unless the BD Manager actively rejects one)
+    decision:        { type: String, enum: ['accepted', 'rejected', null], default: null }
   }],
 
   // Agent 4 output — Module Recommender

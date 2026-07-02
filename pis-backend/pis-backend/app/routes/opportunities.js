@@ -372,6 +372,38 @@ if (opportunity.competencies && opportunity.competencies.length > 0 && req.query
   }
 );
 
+// ── PATCH /api/opportunities/:id/competencies/:competencyId/decision ──
+// Saves whether the BD Manager accepted or rejected a mapped competency.
+// Rejected competencies are excluded from module recommendation.
+router.patch('/:id/competencies/:competencyId/decision',
+  protect,
+  requireRole('admin', 'editor'),
+  async (req, res) => {
+    try {
+      const { decision } = req.body;
+      if (!['accepted', 'rejected', null].includes(decision)) {
+        return res.status(400).json({ error: 'decision must be accepted, rejected, or null' });
+      }
+
+      const opportunity = await Opportunity.findById(req.params.id);
+      if (!opportunity) return res.status(404).json({ error: 'Opportunity not found' });
+
+      const competency = opportunity.competencies.find(
+        c => c.competency_id === req.params.competencyId
+      );
+      if (!competency) return res.status(404).json({ error: 'Competency not found on this opportunity' });
+
+      competency.decision = decision;
+      await opportunity.save();
+
+      res.json({ success: true, competency_id: req.params.competencyId, decision });
+    } catch (err) {
+      console.error('Error saving competency decision:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 // ── POST /api/opportunities/:id/modules ───────────
 router.post('/:id/modules',
   protect,

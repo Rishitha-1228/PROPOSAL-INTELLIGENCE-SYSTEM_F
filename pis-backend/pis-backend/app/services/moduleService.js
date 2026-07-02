@@ -9,8 +9,16 @@ const Module = require('../models/Module');
 
 const recommendModules = async (competencies, tenantId, opportunityId) => {
 
-  // Step 1: Get competency IDs from mapping
-  const competencyIds = competencies.map(c => c.competency_id);
+  // Step 1: Filter out rejected competencies — only accepted or undecided
+  // ones flow forward into module recommendation. This respects the BD
+  // Manager's explicit rejection decisions from the Competency Mapping page.
+  const activeCompetencies = competencies.filter(c => c.decision !== 'rejected');
+
+  if (activeCompetencies.length === 0) {
+    throw new Error('All competencies were rejected. Please accept at least one before proceeding.');
+  }
+
+  const competencyIds = activeCompetencies.map(c => c.competency_id);
 
   console.log(`🔍 Finding modules for competencies: ${competencyIds.join(', ')}`);
 
@@ -27,7 +35,7 @@ const recommendModules = async (competencies, tenantId, opportunityId) => {
     const fallback = await Module.find({ status: 'Active' })
       .sort({ avg_nps: -1 })
       .limit(8);
-    return formatModules(fallback, competencies);
+    return formatModules(fallback, activeCompetencies);
   }
 
   // Step 3: Score each module
@@ -50,7 +58,7 @@ const recommendModules = async (competencies, tenantId, opportunityId) => {
   const top = scored.slice(0, 8).map(s => s.module);
 
   console.log(`✅ Recommended ${top.length} modules`);
-  return formatModules(top, competencies);
+  return formatModules(top, activeCompetencies);
 };
 
 // Format modules for response
@@ -61,17 +69,17 @@ const formatModules = (modules, competencies) => {
     const covered = m.competencies.filter(c => competencyIds.includes(c));
 
     return {
-      module_id:    m.module_id,
-      title:        m.title,
-      domain:       m.domain,
+      module_id: m.module_id,
+      title: m.title,
+      domain: m.domain,
       duration_hrs: m.duration_hrs,
-      format:       m.format,
+      format: m.format,
       audience_level: m.audience_level,
-      faculty:      m.lead_faculty,
+      faculty: m.lead_faculty,
       competencies_covered: covered,
       industry_tags: m.industry_tags,
       evidence: `Used ${m.times_used} times — NPS ${m.avg_nps}/10`,
-      avg_nps:  m.avg_nps,
+      avg_nps: m.avg_nps,
       times_used: m.times_used
     };
   });
