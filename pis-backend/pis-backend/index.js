@@ -11,9 +11,15 @@ app.use(express.json());
 
 //add change
 // ── Connect MongoDB ───────────────────────────
+console.log("PORT =", process.env.PORT);
+console.log("MONGODB_URI =", process.env.MONGODB_URI);
+
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err.message));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => {
+    console.error("❌ MongoDB error:");
+    console.error(err);
+  });
 
 // ── Routes ────────────────────────────────────
 app.use('/api/auth', require('./app/routes/auth'));
