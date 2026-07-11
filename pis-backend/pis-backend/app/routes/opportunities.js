@@ -196,11 +196,11 @@ router.patch('/:id/questions/:questionIndex',
       }
 
       const { answer_text, status, capture_state, question_text, answer_source, framework_used } = req.body;
-      if (answer_text !== undefined)    opportunity.questions[index].answer_text    = answer_text;
-      if (status !== undefined)         opportunity.questions[index].status         = status;
-      if (capture_state !== undefined)  opportunity.questions[index].capture_state  = capture_state;
-      if (question_text !== undefined)  opportunity.questions[index].question_text  = question_text;
-      if (answer_source !== undefined)  opportunity.questions[index].answer_source  = answer_source;
+      if (answer_text !== undefined) opportunity.questions[index].answer_text = answer_text;
+      if (status !== undefined) opportunity.questions[index].status = status;
+      if (capture_state !== undefined) opportunity.questions[index].capture_state = capture_state;
+      if (question_text !== undefined) opportunity.questions[index].question_text = question_text;
+      if (answer_source !== undefined) opportunity.questions[index].answer_source = answer_source;
       if (framework_used !== undefined) opportunity.questions[index].framework_used = framework_used;
 
       await opportunity.save();
@@ -332,19 +332,19 @@ router.post('/:id/competencies',
       }
 
       // Return cached result unless a fresh remap was explicitly requested
-// (e.g. the user just uploaded a new competency framework, in which
-// case the old cached mapping is no longer meaningful).
-if (opportunity.competencies && opportunity.competencies.length > 0 && req.query.remap !== 'true') {
-  return res.json({
-    success: true,
-    message: 'Competencies already mapped',
-    opportunity_id: opportunity._id,
-    client_name: opportunity.client_name,
-    total_competencies: opportunity.competencies.length,
-    competencies: opportunity.competencies,
-    next_step: `POST /api/opportunities/${opportunity._id}/modules`
-  });
-}
+      // (e.g. the user just uploaded a new competency framework, in which
+      // case the old cached mapping is no longer meaningful).
+      if (opportunity.competencies && opportunity.competencies.length > 0 && req.query.remap !== 'true') {
+        return res.json({
+          success: true,
+          message: 'Competencies already mapped',
+          opportunity_id: opportunity._id,
+          client_name: opportunity.client_name,
+          total_competencies: opportunity.competencies.length,
+          competencies: opportunity.competencies,
+          next_step: `POST /api/opportunities/${opportunity._id}/modules`
+        });
+      }
 
       console.log(`🤖 Agent 3: Mapping competencies for ${opportunity.client_name}...`);
 
@@ -418,7 +418,7 @@ router.post('/:id/modules',
         return res.status(400).json({ error: 'Run competency mapping first' });
       }
 
-      if (opportunity.modules && opportunity.modules.length > 0) {
+      if (opportunity.modules && opportunity.modules.length > 0 && req.query.regenerate !== 'true') {
         return res.json({
           success: true,
           message: 'Modules already recommended',
@@ -466,23 +466,53 @@ router.post('/:id/architecture',
       if (!opportunity) return res.status(404).json({ error: 'Not found' });
 
       if (!opportunity.modules?.length) {
-        return res.status(400).json({ error: 'Run module recommendation first' });
+        return res.status(400).json({
+          error: 'Run module recommendation first',
+          redirect_to: '/mapping'
+        });
+      }
+
+      // Architecture needs a real competency set behind it, same principle
+      // as the modules check above — don't silently build against nothing.
+      const acceptedCompetencies = (opportunity.competencies || [])
+        .filter((c) => c.decision !== 'rejected');
+      if (!acceptedCompetencies.length) {
+        return res.status(400).json({
+          error: 'No accepted competencies. Review Competency Mapping first',
+          redirect_to: '/mapping'
+        });
+      }
+
+      // Optional partial design-parameter overrides from the BD Manager,
+      // e.g. { "reinforcement": "heavy" }. Anything not sent falls back
+      // to the inferred defaults inside buildArchitecture().
+      const designParametersOverride = req.body?.design_parameters || {};
+      if (designParametersOverride.total_duration_days !== undefined && designParametersOverride.total_duration_days <= 0) {
+        delete designParametersOverride.total_duration_days;
       }
       // Return cached result if already built, unless force regenerate requested
-if (opportunity.architecture?.phases?.length > 0 && req.query.regenerate !== 'true') {
-  return res.json({
-    success: true,
-    message: 'Architecture already built',
-    opportunity_id: opportunity._id,
-    client_name: opportunity.client_name,
-    architecture: opportunity.architecture,
-    next_step: `POST /api/opportunities/${opportunity._id}/approach-note`
-  });
-}
+      // or the BD Manager is explicitly changing a design parameter.
+      const hasOverride = Object.keys(designParametersOverride).length > 0;
+      if (opportunity.architecture?.phases?.length > 0 && req.query.regenerate !== 'true' && !hasOverride) {
+        return res.json({
+          success: true,
+          message: 'Architecture already built',
+          opportunity_id: opportunity._id,
+          client_name: opportunity.client_name,
+          architecture: opportunity.architecture,
+          next_step: `POST /api/opportunities/${opportunity._id}/approach-note`
+        });
+      }
 
       console.log(`🤖 Agent 5: Building architecture for ${opportunity.client_name}...`);
 
-      const architecture = await buildArchitecture(opportunity);
+      // Carry forward previously saved design parameters (if any) so a
+      // single-field override doesn't reset everything else back to defaults.
+      const previousParameters = opportunity.architecture?.design_parameters || {};
+      const architecture = await buildArchitecture(opportunity, {
+        ...previousParameters,
+        ...designParametersOverride
+      });
 
       const updated = await Opportunity.findByIdAndUpdate(
         opportunity._id,
@@ -517,16 +547,16 @@ router.post('/:id/approach-note',
         return res.status(400).json({ error: 'Run module recommendation first' });
       }
       // Return cached result if already written, unless force regenerate requested
-if (opportunity.approach_note?.sections && req.query.regenerate !== 'true') {
-  return res.json({
-    success: true,
-    message: 'Approach note already written',
-    opportunity_id: opportunity._id,
-    client_name: opportunity.client_name,
-    approach_note: opportunity.approach_note,
-    next_step: `POST /api/opportunities/${opportunity._id}/score`
-  });
-}
+      if (opportunity.approach_note?.sections && req.query.regenerate !== 'true') {
+        return res.json({
+          success: true,
+          message: 'Approach note already written',
+          opportunity_id: opportunity._id,
+          client_name: opportunity.client_name,
+          approach_note: opportunity.approach_note,
+          next_step: `POST /api/opportunities/${opportunity._id}/score`
+        });
+      }
 
 
       console.log(`🤖 Agent 6: Writing approach note for ${opportunity.client_name}...`);
@@ -566,19 +596,19 @@ router.post('/:id/score',
         return res.status(400).json({ error: 'Write approach note first' });
       }
       // Return cached result if already scored, unless force regenerate requested
-if (opportunity.score?.total_score !== undefined && req.query.regenerate !== 'true') {
-  return res.json({
-    success: true,
-    message: 'Proposal already scored',
-    opportunity_id: opportunity._id,
-    client_name: opportunity.client_name,
-    score: opportunity.score,
-    status: opportunity.status,
-    next_step: opportunity.score.can_export
-      ? 'Proposal ready to export'
-      : 'Fix the gaps listed above then re-score'
-  });
-}
+      if (opportunity.score?.total_score !== undefined && req.query.regenerate !== 'true') {
+        return res.json({
+          success: true,
+          message: 'Proposal already scored',
+          opportunity_id: opportunity._id,
+          client_name: opportunity.client_name,
+          score: opportunity.score,
+          status: opportunity.status,
+          next_step: opportunity.score.can_export
+            ? 'Proposal ready to export'
+            : 'Fix the gaps listed above then re-score'
+        });
+      }
 
       console.log(`🤖 Scoring proposal for ${opportunity.client_name}...`);
 

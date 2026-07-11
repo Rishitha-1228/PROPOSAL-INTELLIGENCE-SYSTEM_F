@@ -1,3 +1,4 @@
+const { ReturnDocument } = require('mongodb');
 const mongoose = require('mongoose');
 
 const OpportunitySchema = new mongoose.Schema({
@@ -49,20 +50,56 @@ const OpportunitySchema = new mongoose.Schema({
     decision:        { type: String, enum: ['accepted', 'rejected', null], default: null }
   }],
 
-  // Agent 4 output — Module Recommender
+ // Agent 4 output — Module Recommender
   modules: [{
-    module_id:   String,
-    title:       String,
-    domain:      String,
-    duration_hrs:Number,
-    faculty:     String,
-    evidence:    String,
-    nps:         Number
+    module_id:            String,
+    title:                String,
+    domain:               String,
+    duration_hrs:         Number,
+    faculty:              String,
+    evidence:             String,
+    nps:                  Number,
+    competencies_covered: [String]  // which of the accepted competencies this
+                                     // specific module covers — set by Agent 4,
+                                     // used by Architecture's coverage check
   }],
 
   // Agent 5 output — Architecture Builder
   architecture: {
-    phases: mongoose.Schema.Types.Mixed
+    phases:             mongoose.Schema.Types.Mixed,
+
+    // ── Design parameters used to generate this architecture ──
+    // Either inferred automatically (first generation) or set by the
+    // BD Manager and passed in on a regenerate call.
+    design_parameters: {
+      total_duration_days: Number,
+      format:               String, // 'residential' | 'hybrid' | 'virtual' | 'modular'
+      template:             String, // 'intensive_1d' | 'intensive_3d' | 'residential_5d' | 'hybrid_sprint' | 'modular_monthly'
+      reinforcement:        String, // 'light' | 'medium' | 'heavy'
+      measurement_depth:    Number  // 1-4
+    },
+
+    // ── Deterministic, code-computed metrics — separate from the LLM's own
+    // self-reported "validation" field, which is kept only as a hint ──
+    derived_metrics: {
+      competency_coverage: {
+        covered: Number,
+        total:   Number,
+        missing: [String]
+      },
+      faculty_utilisation: [{
+        name:  String,
+        hours: Number,
+        pct:   Number
+      }],
+      warnings: [String]
+    },
+
+    // ── Short LLM-written explanation of the design choices, shown to the BD Manager ──
+    rationale: {
+      shape_reason:      String,
+      sequencing_reason: String
+    }
   },
 
   // Agent 6 output — Approach Note Writer
@@ -85,3 +122,4 @@ const OpportunitySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Opportunity', OpportunitySchema);
+

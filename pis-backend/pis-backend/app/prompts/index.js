@@ -188,16 +188,16 @@ Rules:
 
   // ── AGENT 5: Architecture Builder ──────────────
   architecture_builder: {
-    version: 'v1',
+    version: 'v2',
     model: 'claude-haiku-4-5',
-    max_tokens: 2500,
+    max_tokens: 3000,
     temperature: 0,
     system: `You are an expert executive education programme designer.
 You build clear, logical day-by-day programme architectures.
 Always respond with valid JSON only.
 No markdown, no explanation. Just JSON.
 ${OUTPUT_RULES}`,
-    user: (opportunity) => `Build a day-by-day programme architecture.
+    user: (opportunity, designParameters) => `Build a day-by-day programme architecture.
 
 CLIENT: ${opportunity.client_name}
 GOALS: ${opportunity.interpreted?.goals?.join(', ')}
@@ -207,6 +207,13 @@ MODULES AVAILABLE:
 ${opportunity.modules?.map((m, i) =>
   `${i + 1}. ${m.title} (${m.duration_hrs}hrs, ${m.format}, Faculty: ${m.faculty})`
 ).join('\n')}
+
+DESIGN PARAMETERS (set by the BD Manager, must be respected):
+- Total duration: ${designParameters.total_duration_days} day(s)
+- Format: ${designParameters.format}
+- Shape template: ${designParameters.template}
+- Reinforcement level: ${designParameters.reinforcement} (light = no follow-up, medium = a few reinforcement touchpoints after the main days, heavy = structured reinforcement cadence over weeks)
+- Measurement depth: ${designParameters.measurement_depth} out of 4 (1 = reaction only, 2 = learning/knowledge check, 3 = behaviour change tracked on the job, 4 = tied to a business KPI)
 
 Build a programme architecture and return EXACTLY this JSON:
 {
@@ -248,15 +255,22 @@ Build a programme architecture and return EXACTLY this JSON:
   "validation": {
     "competencies_covered": ["DAF01", "SCT03"],
     "warnings": []
+  },
+  "rationale": {
+    "shape_reason": "one or two sentences on why this duration/format/template fits this brief",
+    "sequencing_reason": "one or two sentences on why the modules are ordered this way across the phases"
   }
 }
 
 Rules:
+- Total duration must match the design parameters above (${designParameters.total_duration_days} day(s))
+- Format must match the design parameters above (${designParameters.format})
 - Pre-work: 1-2 online modules
 - Each day: 6-8 hours max
-- Last day must include capstone or action planning
+- Last day must include capstone or action planning if reinforcement is medium or heavy
 - Use only modules from the list provided
-- warnings: flag any overloaded days or missing competencies`
+- warnings: flag any overloaded days or missing competencies
+- rationale fields are required and must reference the actual brief, not generic text`
   },
 
   // ── AGENT 6: Approach Note Writer ──────────────
