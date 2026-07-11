@@ -66,11 +66,17 @@ export default function ArchitectureStage() {
     }
   };
 
+ // Only updates local state — no backend call. The Apply button is what
+  // actually triggers a regenerate with everything changed at once.
   const handleParameterChange = (key, value) => {
-    const updated = { ...designParameters, [key]: value };
-    setDesignParameters(updated);
-    loadArchitecture(opportunityId, true, { [key]: value });
+    setDesignParameters({ ...designParameters, [key]: value });
   };
+
+  const handleApplyParameters = () => {
+    if (!designParameters?.total_duration_days || designParameters.total_duration_days <= 0) return;
+    loadArchitecture(opportunityId, true, designParameters);
+  };
+
   // ── Apply a template: same regenerate path, just multiple fields at once ──
   const applyTemplate = (templateParams) => {
     setDesignParameters({ ...designParameters, ...templateParams });
@@ -219,12 +225,6 @@ export default function ArchitectureStage() {
                         total_duration_days: raw === "" ? "" : Number(raw)
                       });
                     }}
-                    onBlur={(e) => {
-                      const val = Number(e.target.value);
-                      if (val > 0) {
-                        handleParameterChange("total_duration_days", val);
-                      }
-                    }}
                   />
                   <label className="paramLabel">Format</label>
                   <select
@@ -247,6 +247,10 @@ export default function ArchitectureStage() {
                     <option value="medium">Medium</option>
                     <option value="heavy">Heavy</option>
                   </select>
+
+                  <button className="applyBtn" onClick={handleApplyParameters}>
+                    Apply Changes & Regenerate
+                  </button>
                 </div>
                 
 
@@ -294,6 +298,8 @@ export default function ArchitectureStage() {
         .rightCard h2{margin-bottom:20px;}
         .paramLabel{display:block;font-size:13px;font-weight:700;color:#64748b;margin-bottom:6px;margin-top:14px;}
         .paramInput{width:100%;padding:10px;border-radius:10px;border:1px solid #dbeafe;font-weight:600;}
+        .applyBtn{width:100%;margin-top:18px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;font-weight:700;cursor:pointer;font-size:14px;}
+        .applyBtn:hover{opacity:0.92;}
         .warning{color:#f59e0b;margin-bottom:10px;}
         .success{color:#10b981;}
       `}</style>
