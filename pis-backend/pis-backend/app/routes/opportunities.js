@@ -465,11 +465,14 @@ router.post('/:id/architecture',
       const opportunity = await Opportunity.findById(req.params.id);
       if (!opportunity) return res.status(404).json({ error: 'Not found' });
 
+      // Instead of blocking the BD Manager with an error, silently run
+      // module recommendation first if it hasn't happened yet — same
+      // fallback pattern already used by the Approach Note stage.
       if (!opportunity.modules?.length) {
-        return res.status(400).json({
-          error: 'Run module recommendation first',
-          redirect_to: '/mapping'
-        });
+        console.log(`🤖 Agent 4: No modules yet for ${opportunity.client_name} — running module recommendation first...`);
+        const modules = await recommendModules(opportunity.competencies, req.user.id, opportunity._id);
+        await Opportunity.findByIdAndUpdate(opportunity._id, { $set: { modules } });
+        opportunity.modules = modules;
       }
 
       // Architecture needs a real competency set behind it, same principle
