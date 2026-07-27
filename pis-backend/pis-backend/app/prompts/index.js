@@ -13,7 +13,7 @@ const PROMPTS = {
   brief_interpretation: {
     version: 'v1',
     model: 'claude-haiku-4-5',
-    max_tokens: 400,
+    max_tokens: 600,
     temperature: 0,
     system: `You are an expert in executive education programme design at a top business school.
 Your job is to extract structured information from corporate training briefs.
@@ -21,32 +21,41 @@ Always respond with valid JSON only.
 Never add markdown backticks, never add explanation text.
 Just the raw JSON object.
 ${OUTPUT_RULES}`,
-    user: (briefText) => `Extract structured information from this corporate training brief.
+   user: (briefText) => `Extract structured information from this corporate training brief.
 
 BRIEF:
 "${briefText}"
 
 Return EXACTLY this JSON structure, nothing else:
 {
+  "problem_statement": "the underlying business problem or rationale driving this programme, i.e. why this is being commissioned now",
   "goals": ["specific goal 1", "specific goal 2", "specific goal 3"],
   "audience": "description of who attends including level, function, size",
+  "why_needed": "why this specific audience needs this programme now, referencing any context like assessments, a larger initiative, or organisational change",
   "constraints": ["constraint 1", "constraint 2"],
   "themes": ["theme 1", "theme 2", "theme 3"],
   "pedagogical_posture": "suggested delivery approach",
+  "suggested_format": "blended | vilt | async | on-campus | not specified",
+  "suggested_duration": "e.g. 3 days total, spread across 2 months, or not specified if brief is silent",
+  "suggested_budget": "extracted budget figure/range if mentioned, or not specified",
   "confidence_score": 85,
   "ambiguities": ["unclear point 1", "unclear point 2"]
 }
 
 Rules:
+- problem_statement: 1-3 sentences on the organisational context and rationale, not just a restatement of goals
 - goals: 3-5 specific learning outcomes
 - audience: one clear sentence describing participants
+- why_needed: 1-2 sentences on the audience's need, distinct from audience description itself
 - constraints: duration, format, dates, budget, location
 - themes: 3-6 content areas
 - pedagogical_posture: action-learning / case-led / simulation / coaching
+- suggested_format: pick the closest match from blended/vilt/async/on-campus based on brief language, or "not specified" if brief gives no signal
+- suggested_duration: extract explicit day/month counts if given, else say "not specified"
+- suggested_budget: extract explicit budget figures if given, else say "not specified"
 - confidence_score: 0-100, how complete the brief is
 - ambiguities: what is unclear or missing`
   },
-  
 
   // ── AGENT 2: Question Generator ────────────────
   question_generation: {
