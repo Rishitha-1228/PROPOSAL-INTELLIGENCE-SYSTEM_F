@@ -22,8 +22,9 @@ const interpretBrief = async (briefText, tenantId, opportunityId) => {
     agent: 'brief_interpreter'
   });
 
-  // Validate we got what we need
-  if (!result.goals || !result.audience) {
+  // Validate we got what we need — goals/audience are now { value, confidence, source }
+  // objects, not plain values, so check the nested .value.
+  if (!result.goals?.value?.length || !result.audience?.value) {
     throw new Error('Interpretation incomplete — missing goals or audience');
   }
 

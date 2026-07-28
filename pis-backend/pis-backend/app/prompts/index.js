@@ -10,10 +10,11 @@ const PROMPTS = {
   
 
   // ── AGENT 1: Brief Interpreter ─────────────────
+  // ── AGENT 1: Brief Interpreter ─────────────────
   brief_interpretation: {
-    version: 'v1',
+    version: 'v2',
     model: 'claude-haiku-4-5',
-    max_tokens: 600,
+    max_tokens: 1200,
     temperature: 0,
     system: `You are an expert in executive education programme design at a top business school.
 Your job is to extract structured information from corporate training briefs.
@@ -26,18 +27,29 @@ ${OUTPUT_RULES}`,
 BRIEF:
 "${briefText}"
 
+For EVERY field below, you must classify how you arrived at it using one of three sources:
+- "client_stated": the brief says this explicitly, at or near verbatim
+- "inferred": the brief doesn't say this directly, but it's a reasonable read of context that IS in the brief
+- "assumed": the brief gives no signal on this at all; this is a standard-practice default, not derived from the brief
+
+Also give a confidence score (0-100) for each field individually, not just one score for the whole brief.
+client_stated fields should generally score high (80-100). inferred fields should score in a middle range
+depending on how strong the contextual signal is. assumed fields should generally score low (0-40), since
+they are not grounded in anything the client actually said.
+
 Return EXACTLY this JSON structure, nothing else:
 {
-  "problem_statement": "the underlying business problem or rationale driving this programme, i.e. why this is being commissioned now",
-  "goals": ["specific goal 1", "specific goal 2", "specific goal 3"],
-  "audience": "description of who attends including level, function, size",
-  "why_needed": "why this specific audience needs this programme now, referencing any context like assessments, a larger initiative, or organisational change",
-  "constraints": ["constraint 1", "constraint 2"],
-  "themes": ["theme 1", "theme 2", "theme 3"],
-  "pedagogical_posture": "suggested delivery approach",
-  "suggested_format": "blended | vilt | async | on-campus | not specified",
-  "suggested_duration": "e.g. 3 days total, spread across 2 months, or not specified if brief is silent",
-  "suggested_budget": "extracted budget figure/range if mentioned, or not specified",
+  "problem_statement": { "value": "the underlying business problem or rationale, why this is being commissioned now", "confidence": 80, "source": "inferred" },
+  "goals": { "value": ["specific goal 1", "specific goal 2", "specific goal 3"], "confidence": 90, "source": "client_stated" },
+  "audience": { "value": "description of who attends including level, function, size", "confidence": 85, "source": "client_stated" },
+  "why_needed": { "value": "why this specific audience needs this programme now", "confidence": 70, "source": "inferred" },
+  "constraints": { "value": ["constraint 1", "constraint 2"], "confidence": 85, "source": "client_stated" },
+  "themes": { "value": ["theme 1", "theme 2", "theme 3"], "confidence": 75, "source": "inferred" },
+  "pedagogical_posture": { "value": "suggested delivery approach", "confidence": 40, "source": "assumed" },
+  "suggested_format": { "value": "blended | vilt | async | on-campus | not specified", "confidence": 50, "source": "assumed" },
+  "suggested_duration": { "value": "e.g. 3 days total, spread across 2 months, or not specified", "confidence": 40, "source": "assumed" },
+  "suggested_budget": { "value": "extracted budget figure/range, or not specified", "confidence": 30, "source": "assumed" },
+  "stakeholder_map": { "value": [{ "name": "role or name if given", "role": "job title", "influence": "high | medium | low" }], "confidence": 50, "source": "inferred" },
   "confidence_score": 85,
   "ambiguities": ["unclear point 1", "unclear point 2"]
 }
@@ -50,11 +62,12 @@ Rules:
 - constraints: duration, format, dates, budget, location
 - themes: 3-6 content areas
 - pedagogical_posture: action-learning / case-led / simulation / coaching
-- suggested_format: pick the closest match from blended/vilt/async/on-campus based on brief language, or "not specified" if brief gives no signal
-- suggested_duration: extract explicit day/month counts if given, else say "not specified"
-- suggested_budget: extract explicit budget figures if given, else say "not specified"
-- confidence_score: 0-100, how complete the brief is
-- ambiguities: what is unclear or missing`
+- suggested_format: pick the closest match from blended/vilt/async/on-campus, or "not specified" if brief gives no signal
+- suggested_duration: extract explicit day/month counts if given, else "not specified"
+- suggested_budget: extract explicit budget figures if given, else "not specified"
+- stakeholder_map: only include if the brief names or clearly implies specific roles; return an empty array if none are identifiable, do not invent people
+- confidence_score: 0-100, overall brief completeness (this one stays a plain number, it is not per-field)
+- ambiguities: what is unclear or missing (this stays a plain array of strings, not wrapped in source/confidence)`
   },
 
   // ── AGENT 2: Question Generator ────────────────

@@ -7,16 +7,27 @@ const OpportunitySchema = new mongoose.Schema({
   brief_text:   { type: String, required: true },
 
   // Agent 1 output — Brief Interpreter
+  // Every substantive field is stored as { value, confidence, source } so the
+  // page can show per-section confidence and whether the AI got it directly
+  // from the client, inferred it, or is falling back to a standard assumption.
   interpreted: {
-    goals:               [String],
-    audience:            String,
-    constraints:         [String],
-    themes:              [String],
-    pedagogical_posture: String,
+    problem_statement:   { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    goals:                { value: [String], confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    audience:             { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    why_needed:           { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    constraints:          { value: [String], confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    themes:                { value: [String], confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    pedagogical_posture:  { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    suggested_format:     { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    suggested_duration:   { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    suggested_budget:     { value: String, confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+    stakeholder_map:      { value: [{ name: String, role: String, influence: String }], confidence: Number, source: { type: String, enum: ['client_stated', 'inferred', 'assumed'] } },
+
+    // These two stay plain — they describe the brief overall, not a single
+    // extracted fact, so a per-field confidence/source doesn't apply to them.
     confidence_score:    Number,
     ambiguities:         [String]
   },
-
   // Agent 2 output — Question Generator
   questions: [{
     theme_code:     String,
