@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyseBrief } from "../services/api";
 
+
+
 const INTAKE_STORAGE_KEY = "pis_intake_state";
 
 const DEFAULT_FORM = {
@@ -39,11 +41,15 @@ const PROG_TYPES = [
   { value: "new_with_repeat_participants", label: "New Programme, Same Cohort", desc: "New content, familiar audience" },
 ];
 
+const DURATION_DAY_OPTIONS = ["1", "2", "3", "4", "5", "7", "10", "15", "20", "custom"];
+const HOURS_PER_DAY_OPTIONS = ["4", "5", "6", "7", "8"];
+
 export default function IntakeStage() {
   const navigate  = useNavigate();
   const fileRef   = useRef(null);
   const audioRef  = useRef(null);
   const imageRef  = useRef(null);
+  
 
   const [formData,    setFormData]    = useState(DEFAULT_FORM);
   const [analysis,    setAnalysis]    = useState(null);
@@ -51,6 +57,10 @@ export default function IntakeStage() {
   const [error,       setError]       = useState("");
   const [attachments, setAttachments] = useState([]);
 
+  const [editingField, setEditingField] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  
+  
   useEffect(() => {
     try {
       const saved = localStorage.getItem(INTAKE_STORAGE_KEY);
@@ -84,6 +94,22 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis);
   };
+
+  // Selecting "custom" reveals a free number input instead of the preset
+  // list; picking an actual number sets totalDays directly and clears the
+  // custom flag, so switching back to a preset always wins over a stale
+  // custom value.
+  const handleDurationSelect = (e) => {
+    const val = e.target.value;
+    const updated = val === "custom"
+      ? { ...formData, durationCustom: true, totalDays: "" }
+      : { ...formData, durationCustom: false, totalDays: val };
+    setFormData(updated);
+    persist(updated, analysis);
+  };
+
+  
+  
 
   // ── Phase table ───────────────────────────────
   const addPhase = () => {
@@ -127,6 +153,109 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis, next);
   };
+  // ── Source tag styling ─────────────────────────
+  const SOURCE_STYLE = {
+    client_stated: { label: "Client Stated", bg: "#dcfce7", color: "#166534" },
+    inferred:      { label: "Inferred",      bg: "#fef3c7", color: "#92400e" },
+    assumed:       { label: "Assumed",       bg: "#fee2e2", color: "#991b1b" },
+  };
+
+  const confidenceColor = (score) => score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
+
+  // ── Start editing a field. arrayIndex is only used for array-valued fields ──
+  const startEdit = (fieldKey, currentValue) => {
+    setEditingField(fieldKey);
+    setEditDraft(Array.isArray(currentValue) ? currentValue.join("\n") : (currentValue || ""));
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditDraft("");
+  };
+
+  // Saves a manual edit locally onto the analysis object. This does not call
+  // the AI again — sir is directly overriding what the AI produced, so the
+  // field's source is switched to "client_stated" (a human confirmed it) and
+  // confidence goes to 100, since it's no longer a guess of any kind.
+  const saveEdit = (fieldKey, isArray) => {
+    const newValue = isArray
+      ? editDraft.split("\n").map(s => s.trim()).filter(Boolean)
+      : editDraft.trim();
+
+    const updatedInterpreted = {
+      ...analysis.interpreted,
+      [fieldKey]: {
+        ...analysis.interpreted[fieldKey],
+        value: newValue,
+        confidence: 100,
+        source: "client_stated",
+      },
+    };
+    const updatedAnalysis = { ...analysis, interpreted: updatedInterpreted };
+    setAnalysis(updatedAnalysis);
+    persist(formData, updatedAnalysis);
+    setEditingField(null);
+    setEditDraft("");
+  };
+
+  // ── Renders one interpretation section: title, confidence badge, source
+  // tag, the value itself (or an edit box if this field is being edited) ──
+  const renderSection = (fieldKey, title, color, isArray = false) => {
+    const field = analysis.interpreted?.[fieldKey];
+    if (!field) return null;
+    const src = SOURCE_STYLE[field.source] || SOURCE_STYLE.assumed;
+    const isEditing = editingField === fieldKey;
+
+    return (
+      <div key={fieldKey} style={S.aiCard}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+          <h3 style={{ margin: 0, color, fontSize: "15px", fontWeight: "700" }}>{title}</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "20px", background: src.bg, color: src.color }}>
+              {src.label}
+            </span>
+            <span style={{ fontSize: "11px", fontWeight: "700", color: confidenceColor(field.confidence) }}>
+              {field.confidence}%
+            </span>
+            {!isEditing && (
+              <button onClick={() => startEdit(fieldKey, field.value)}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
+                Edit
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isEditing ? (
+          <div>
+            <textarea
+              value={editDraft}
+              onChange={e => setEditDraft(e.target.value)}
+              rows={isArray ? 4 : 3}
+              placeholder={isArray ? "One item per line" : ""}
+              style={S.textarea}
+            />
+            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <button onClick={() => saveEdit(fieldKey, isArray)}
+                style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#2563eb", color: "white", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}>
+                Save
+              </button>
+              <button onClick={cancelEdit}
+                style={{ padding: "6px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "white", color: "#475569", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : isArray ? (
+          <ul style={{ paddingLeft: "20px", margin: 0 }}>
+            {field.value?.map((item, i) => <li key={i} style={{ marginBottom: "6px", color: "#334155", fontSize: "14px" }}>{item}</li>)}
+          </ul>
+        ) : (
+          <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{field.value}</p>
+        )}
+      </div>
+    );
+  };
 
   // ── Analyse ───────────────────────────────────
   const handleAnalyse = async () => {
@@ -142,12 +271,12 @@ export default function IntakeStage() {
       });
       localStorage.setItem("pis_opportunity_id", result.opportunity_id);
 
-      // Budget auto-fill (Sparsh point 1)
-      const constraints = result.interpreted?.constraints || [];
+      // Budget auto-fill (Sparsh point 1) — constraints is now
+      // { value, confidence, source }, so read the array off .value
+      const constraints = result.interpreted?.constraints?.value || [];
       const budgetHint  = constraints.find(c => /budget|lakh|crore|₹|cost|investment|commercial/i.test(c));
       const budgetValue = budgetHint ? budgetHint : formData.budget;
       const budgetFlag  = budgetHint ? "found" : "not_found";
-
       const updatedForm = { ...formData, budget: budgetValue, budgetFlag };
       setFormData(updatedForm);
       setAnalysis(result);
@@ -318,8 +447,54 @@ export default function IntakeStage() {
 
             {formData.durationKnown === "yes" ? (
               <>
-                <label style={S.label}>Total Days <span style={{ color: "#94a3b8", fontWeight: "400" }}>(1 day = 6 hours)</span></label>
-                <input name="totalDays" value={formData.totalDays} onChange={handleChange} type="number" min="1" placeholder="e.g. 5" style={{ ...S.input, maxWidth: 160 }} />
+                <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+                  <div>
+                    <label style={S.label}>Total Days</label>
+                    <select
+                      value={formData.durationCustom ? "custom" : formData.totalDays}
+                      onChange={handleDurationSelect}
+                      style={{ ...S.input, maxWidth: 200 }}
+                    >
+                      <option value="" disabled>Select days</option>
+                      {DURATION_DAY_OPTIONS.map(d => (
+                        <option key={d} value={d}>{d === "custom" ? "Custom..." : `${d} day${d === "1" ? "" : "s"}`}</option>
+                      ))}
+                    </select>
+
+                    {formData.durationCustom && (
+                      <input
+                        name="totalDays"
+                        value={formData.totalDays}
+                        onChange={handleChange}
+                        type="number"
+                        min="1"
+                        placeholder="Enter number of days"
+                        style={{ ...S.input, maxWidth: 200, marginTop: "10px" }}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={S.label}>Hours per Day</label>
+                    <select
+                      name="hoursPerDay"
+                      value={formData.hoursPerDay}
+                      onChange={handleChange}
+                      style={{ ...S.input, maxWidth: 140 }}
+                    >
+                      {HOURS_PER_DAY_OPTIONS.map(h => (
+                        <option key={h} value={h}>{h} hours</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {formData.totalDays && !formData.durationCustom === false ? null : null}
+                {formData.totalDays && (
+                  <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "8px" }}>
+                    Total contact time: {(Number(formData.totalDays) || 0) * (Number(formData.hoursPerDay) || 0)} hours
+                  </p>
+                )}
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px", marginBottom: "12px" }}>
                   <label style={{ ...S.label, margin: 0 }}>Phase Breakdown — by calendar month</label>
@@ -367,8 +542,22 @@ export default function IntakeStage() {
             )}
           </div>
 
-          
-     
+          {/* BUTTONS */}
+          <div style={{ display: "flex", gap: "20px", marginTop: "30px" }}>
+            <button onClick={handleAnalyse} style={{ background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "white", border: "none", padding: "16px 28px", borderRadius: "16px", fontSize: "16px", fontWeight: "700", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }} disabled={loading}>
+              {loading ? "Analysing brief..." : "Analyse Brief"}
+            </button>
+            <button onClick={handleNext} style={{ background: "#0f172a", color: "white", border: "none", padding: "16px 28px", borderRadius: "16px", fontSize: "16px", fontWeight: "700", cursor: "pointer" }}>
+              Next → {formData.programmeType === "repeat" ? "Architecture" : "Questions"}
+            </button>
+          </div>
+
+          {/* ERROR */}
+          {error && (
+            <p style={{ color: "#dc2626", marginTop: "20px", padding: "12px 16px", background: "#fef2f2", borderRadius: "10px", fontSize: "14px" }}>
+              {error}
+            </p>
+          )}
 
           {/* ── BRIEF INTERPRETATION RESULT ── */}
           {analysis && (
@@ -388,25 +577,16 @@ export default function IntakeStage() {
                 <div style={{ height: "100%", width: `${analysis.interpreted?.confidence_score}%`, background: analysis.interpreted?.confidence_score >= 70 ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#f59e0b,#d97706)", borderRadius: "999px", transition: "width 1s ease" }} />
               </div>
 
-             {[
-                { title: "📝 Problem Statement / Rationale", color: "#0f172a", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.problem_statement}</p> },
-                { title: "🎯 Goals", color: "#2563eb", content: <ul style={{ paddingLeft: "20px", margin: 0 }}>{analysis.interpreted?.goals?.map((g, i) => <li key={i} style={{ marginBottom: "6px", color: "#334155", fontSize: "14px" }}>{g}</li>)}</ul> },
-                { title: "👥 Audience", color: "#7c3aed", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.audience}</p> },
-                { title: "🤔 Why Do They Need It", color: "#9333ea", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.why_needed}</p> },
-                { title: "🏷️ Capability Themes", color: "#059669", content: <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>{analysis.interpreted?.themes?.map((t, i) => <span key={i} style={{ padding: "5px 14px", background: "#dcfce7", color: "#166534", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>{t}</span>)}</div> },
-                { title: "⚠️ Constraints", color: "#dc2626", content: <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>{analysis.interpreted?.constraints?.map((c, i) => <span key={i} style={{ padding: "5px 14px", background: "#fef2f2", color: "#dc2626", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>{c}</span>)}</div> },
-                { title: "📚 Suggested Approach", color: "#d97706", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.pedagogical_posture}</p> },
-                { title: "🎬 Suggested Format", color: "#0891b2", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.suggested_format}</p> },
-  { title: "📅 Suggested Duration", color: "#0891b2", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.suggested_duration}</p> },
-  { title: "💰 Suggested Budget", color: "#0891b2", content: <p style={{ color: "#334155", fontSize: "14px", lineHeight: 1.7, margin: 0 }}>{analysis.interpreted?.suggested_budget}</p> },              
-{ title: "🧑‍🤝‍🧑 Stakeholder Map", color: "#be185d", content: <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>{analysis.interpreted?.stakeholder_map?.map((s, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#fdf2f8", borderRadius: "10px", fontSize: "13px" }}><span><strong>{s.name}</strong><span style={{ color: "#64748b", marginLeft: "8px" }}>{s.role}</span></span><span style={{ padding: "3px 10px", background: "#fce7f3", color: "#be185d", borderRadius: "20px", fontSize: "11px", fontWeight: "700", textTransform: "capitalize" }}>{s.influence}</span></div>)}</div> },   
-].map(({ title, color, content }) => (
-                <div key={title} style={S.aiCard}>
-                  <h3 style={{ marginBottom: "10px", color, fontSize: "15px", fontWeight: "700" }}>{title}</h3>
-                  {content}
-                </div>
-             
-              ))}
+             {renderSection("problem_statement", "📝 Problem Statement / Rationale", "#0f172a")}
+              {renderSection("goals", "🎯 Goals", "#2563eb", true)}
+              {renderSection("audience", "👥 Audience", "#7c3aed")}
+              {renderSection("why_needed", "🤔 Why Do They Need It", "#9333ea")}
+              {renderSection("themes", "🏷️ Capability Themes", "#059669", true)}
+              {renderSection("constraints", "⚠️ Constraints", "#dc2626", true)}
+              {renderSection("pedagogical_posture", "📚 Suggested Approach", "#d97706")}
+              {renderSection("suggested_format", "🎬 Suggested Format", "#0891b2")}
+              {renderSection("suggested_duration", "📅 Suggested Duration", "#0891b2")}
+              {renderSection("suggested_budget", "💰 Suggested Budget", "#0891b2")}
 
               {analysis.interpreted?.ambiguities?.length > 0 && (
                 <div style={{ ...S.aiCard, background: "#fef3c7", border: "1px solid #fbbf24" }}>
