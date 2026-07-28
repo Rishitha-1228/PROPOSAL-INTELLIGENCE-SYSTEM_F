@@ -37,7 +37,7 @@ const MODE_OPTIONS = ["On-campus", "Live-Virtual", "Async", "Blended"];
 
 const PROG_TYPES = [
   { value: "new",                          label: "New Programme",              desc: "First time this is being run" },
-  { value: "repeat",                       label: "Repeat Programme",           desc: "Delivered before — skip to Architecture" },
+  { value: "repeat",                       label: "Repeat Programme",           desc: "Delivered before skip to Architecture" },
   { value: "new_with_repeat_participants", label: "New Programme, Same Cohort", desc: "New content, familiar audience" },
 ];
 
@@ -95,10 +95,6 @@ export default function IntakeStage() {
     persist(updated, analysis);
   };
 
-  // Selecting "custom" reveals a free number input instead of the preset
-  // list; picking an actual number sets totalDays directly and clears the
-  // custom flag, so switching back to a preset always wins over a stale
-  // custom value.
   const handleDurationSelect = (e) => {
     const val = e.target.value;
     const updated = val === "custom"
@@ -107,11 +103,6 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis);
   };
-
-  
-  
-
-  // ── Phase table ───────────────────────────────
   const addPhase = () => {
     const updated = { ...formData, phases: [...formData.phases, { month: `Month ${formData.phases.length + 1}`, days: "", mode: "" }] };
     setFormData(updated);
@@ -131,7 +122,6 @@ export default function IntakeStage() {
     persist(updated, analysis);
   };
 
-  // ── Attachments ───────────────────────────────
   const handleFiles = (files, type = "file") => {
     const newAtts = Array.from(files).map(f => ({ name: f.name, type, size: (f.size / 1024).toFixed(1) + " KB" }));
     const next = [...attachments, ...newAtts];
@@ -153,7 +143,6 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis, next);
   };
-  // ── Source tag styling ─────────────────────────
   const SOURCE_STYLE = {
     client_stated: { label: "Client Stated", bg: "#dcfce7", color: "#166534" },
     inferred:      { label: "Inferred",      bg: "#fef3c7", color: "#92400e" },
@@ -173,10 +162,6 @@ export default function IntakeStage() {
     setEditDraft("");
   };
 
-  // Saves a manual edit locally onto the analysis object. This does not call
-  // the AI again — sir is directly overriding what the AI produced, so the
-  // field's source is switched to "client_stated" (a human confirmed it) and
-  // confidence goes to 100, since it's no longer a guess of any kind.
   const saveEdit = (fieldKey, isArray) => {
     const newValue = isArray
       ? editDraft.split("\n").map(s => s.trim()).filter(Boolean)
@@ -198,8 +183,6 @@ export default function IntakeStage() {
     setEditDraft("");
   };
 
-  // ── Renders one interpretation section: title, confidence badge, source
-  // tag, the value itself (or an edit box if this field is being edited) ──
   const renderSection = (fieldKey, title, color, isArray = false) => {
     const field = analysis.interpreted?.[fieldKey];
     if (!field) return null;
@@ -257,7 +240,6 @@ export default function IntakeStage() {
     );
   };
 
-  // ── Analyse ───────────────────────────────────
   const handleAnalyse = async () => {
     if (!formData.client) { setError("Please enter Client Name"); return; }
     if (!formData.brief && !formData.meetingNotes) { setError("Please paste the client brief or meeting notes."); return; }
@@ -271,8 +253,6 @@ export default function IntakeStage() {
       });
       localStorage.setItem("pis_opportunity_id", result.opportunity_id);
 
-      // Budget auto-fill (Sparsh point 1) — constraints is now
-      // { value, confidence, source }, so read the array off .value
       const constraints = result.interpreted?.constraints?.value || [];
       const budgetHint  = constraints.find(c => /budget|lakh|crore|₹|cost|investment|commercial/i.test(c));
       const budgetValue = budgetHint ? budgetHint : formData.budget;
@@ -301,8 +281,6 @@ export default function IntakeStage() {
     localStorage.removeItem(INTAKE_STORAGE_KEY);
     localStorage.removeItem("pis_opportunity_id");
   };
-
-  // ── Shared styles ─────────────────────────────
   const S = {
     sectionTitle: { fontSize: "19px", fontWeight: "700", color: "#0f172a", borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginTop: "36px", marginBottom: "18px" },
     grid2:  { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
@@ -362,7 +340,7 @@ export default function IntakeStage() {
           </div>
           {formData.programmeType === "repeat" && (
             <div style={{ marginTop: "12px", padding: "12px 16px", background: "#fef3c7", borderRadius: "12px", border: "1px solid #fbbf24", fontSize: "13px", color: "#92400e" }}>
-              ⚡ Repeat programme — "Next" will skip Discovery Questions and go straight to Architecture.
+               Repeat programme — "Next" will skip Discovery Questions and go straight to Architecture.
             </div>
           )}
 
@@ -392,17 +370,17 @@ export default function IntakeStage() {
             <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Attach Source Material</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
               {[
-                { label: "📎 Attach Files",      ref: fileRef,  accept: "*",        type: "file" },
-                { label: "🎵 Audio / Recording", ref: audioRef, accept: "audio/*",  type: "audio" },
-                { label: "🖼️ Images",            ref: imageRef, accept: "image/*",  type: "image" },
+                { label: " Attach Files",      ref: fileRef,  accept: "*",        type: "file" },
+                { label: " Audio / Recording", ref: audioRef, accept: "audio/*",  type: "audio" },
+                { label: " Images",            ref: imageRef, accept: "image/*",  type: "image" },
               ].map(btn => (
                 <span key={btn.label}>
                   <input type="file" ref={btn.ref} multiple accept={btn.accept} style={{ display: "none" }} onChange={e => handleFiles(e.target.files, btn.type)} />
                   <button onClick={() => btn.ref.current?.click()} style={S.outlineBtn}>{btn.label}</button>
                 </span>
               ))}
-              <button onClick={() => alert("In-app recording — coming soon.")} style={S.outlineBtn}>🎙️ Record Call</button>
-              <button onClick={() => alert("Teams / Zoom / Meet integration — coming soon.")} style={S.outlineBtn}>📹 Import from Meeting App</button>
+              <button onClick={() => alert("In-app recording — coming soon.")} style={S.outlineBtn}>Record Call</button>
+              <button onClick={() => alert("Teams / Zoom / Meet integration — coming soon.")} style={S.outlineBtn}> Import from Meeting App</button>
             </div>
 
             <div style={{ display: "flex", gap: "10px" }}>
@@ -419,7 +397,7 @@ export default function IntakeStage() {
                 {attachments.map((att, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f1f5f9", borderRadius: "10px", fontSize: "13px" }}>
                     <span>
-                      {att.type === "audio" ? "🎵" : att.type === "image" ? "🖼️" : att.type === "link" ? "🔗" : "📎"}{" "}
+                      {att.type === "audio" ?  : att.type === "image" ? : att.type === "link" ? }{" "}
                       <strong>{att.name}</strong>
                       <span style={{ color: "#94a3b8", marginLeft: "8px" }}>{att.size}</span>
                     </span>
@@ -537,7 +515,7 @@ export default function IntakeStage() {
               </>
             ) : (
               <div style={{ padding: "14px 18px", background: "#fef3c7", borderRadius: "12px", border: "1px solid #fbbf24", fontSize: "13px", color: "#92400e" }}>
-                ⚠️ Duration not specified in brief — flagged for scoping. Revisit once budget is confirmed.
+                 Duration not specified in brief — flagged for scoping. Revisit once budget is confirmed.
               </div>
             )}
           </div>
@@ -577,20 +555,20 @@ export default function IntakeStage() {
                 <div style={{ height: "100%", width: `${analysis.interpreted?.confidence_score}%`, background: analysis.interpreted?.confidence_score >= 70 ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#f59e0b,#d97706)", borderRadius: "999px", transition: "width 1s ease" }} />
               </div>
 
-             {renderSection("problem_statement", "📝 Problem Statement / Rationale", "#0f172a")}
-              {renderSection("goals", "🎯 Goals", "#2563eb", true)}
-              {renderSection("audience", "👥 Audience", "#7c3aed")}
-              {renderSection("why_needed", "🤔 Why Do They Need It", "#9333ea")}
-              {renderSection("themes", "🏷️ Capability Themes", "#059669", true)}
-              {renderSection("constraints", "⚠️ Constraints", "#dc2626", true)}
-              {renderSection("pedagogical_posture", "📚 Suggested Approach", "#d97706")}
-              {renderSection("suggested_format", "🎬 Suggested Format", "#0891b2")}
-              {renderSection("suggested_duration", "📅 Suggested Duration", "#0891b2")}
-              {renderSection("suggested_budget", "💰 Suggested Budget", "#0891b2")}
+             {renderSection("problem_statement", "Problem Statement / Rationale", "#0f172a")}
+              {renderSection("goals", " Goals", "#2563eb", true)}
+              {renderSection("audience", " Audience", "#7c3aed")}
+              {renderSection("why_needed", " Why Do They Need It", "#9333ea")}
+              {renderSection("themes", " Capability Themes", "#059669", true)}
+              {renderSection("constraints", "Constraints", "#dc2626", true)}
+              {renderSection("pedagogical_posture", "Suggested Approach", "#d97706")}
+              {renderSection("suggested_format", "Suggested Format", "#0891b2")}
+              {renderSection("suggested_duration", " Suggested Duration", "#0891b2")}
+              {renderSection("suggested_budget", " Suggested Budget", "#0891b2")}
 
               {analysis.interpreted?.ambiguities?.length > 0 && (
                 <div style={{ ...S.aiCard, background: "#fef3c7", border: "1px solid #fbbf24" }}>
-                  <h3 style={{ marginBottom: "10px", color: "#92400e", fontSize: "15px", fontWeight: "700" }}>🔍 Ambiguities — Confirm in Discovery Call</h3>
+                  <h3 style={{ marginBottom: "10px", color: "#92400e", fontSize: "15px", fontWeight: "700" }}> Ambiguities — Confirm in Discovery Call</h3>
                   <ul style={{ paddingLeft: "20px", margin: 0 }}>
                     {analysis.interpreted.ambiguities.map((a, i) => <li key={i} style={{ marginBottom: "6px", color: "#78350f", fontSize: "14px" }}>{a}</li>)}
                   </ul>
