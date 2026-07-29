@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyseBrief } from "../services/api";
 
-
-
 const INTAKE_STORAGE_KEY = "pis_intake_state";
 
 const DEFAULT_FORM = {
@@ -21,23 +19,16 @@ const DEFAULT_FORM = {
   location: "",
   durationKnown: "yes",
   totalDays: "",
+  durationCustom: false,
+  hoursPerDay: "6",
   budget: "",
   budgetFlag: "",
-  phases: [{ month: "Month 1", days: "", mode: "" }],
+  phases: [{ month: "Month 1", sessions: [{ day: "Day 1", mode: "" }] }],
 };
-
-const FORMAT_OPTIONS = [
-  { value: "blended",   label: "Blended",             desc: "Mix of modes below" },
-  { value: "vilt",      label: "Live-Virtual (VILT)",  desc: "Instructor-led, online" },
-  { value: "async",     label: "Async (Self-paced)",   desc: "No live component" },
-  { value: "on-campus", label: "On-campus",            desc: "In-person, instructor-led" },
-];
-
-const MODE_OPTIONS = ["On-campus", "Live-Virtual", "Async", "Blended"];
 
 const PROG_TYPES = [
   { value: "new",                          label: "New Programme",              desc: "First time this is being run" },
-  { value: "repeat",                       label: "Repeat Programme",           desc: "Delivered before skip to Architecture" },
+  { value: "repeat",                       label: "Repeat Programme",           desc: "Delivered before — skip to Architecture" },
   { value: "new_with_repeat_participants", label: "New Programme, Same Cohort", desc: "New content, familiar audience" },
 ];
 
@@ -49,24 +40,40 @@ export default function IntakeStage() {
   const fileRef   = useRef(null);
   const audioRef  = useRef(null);
   const imageRef  = useRef(null);
-  
 
-  const [formData,    setFormData]    = useState(DEFAULT_FORM);
-  const [analysis,    setAnalysis]    = useState(null);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState("");
-  const [attachments, setAttachments] = useState([]);
+  const [formData,     setFormData]     = useState(DEFAULT_FORM);
+  const [analysis,     setAnalysis]     = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState("");
+  const [attachments,  setAttachments]  = useState([]);
+  const [isRecording,  setIsRecording]  = useState(false);
+  const [transcript,   setTranscript]   = useState("");
+  const [recError,     setRecError]     = useState("");
+  const recognitionRef = useRef(null);
 
   const [editingField, setEditingField] = useState(null);
-  const [editDraft, setEditDraft] = useState("");
-  
-  
-  useEffect(() => {
+  const [editDraft,    setEditDraft]    = useState("");
+
+useEffect(() => {
     try {
       const saved = localStorage.getItem(INTAKE_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.formData)    setFormData({ ...DEFAULT_FORM, ...parsed.formData });
+        if (parsed.formData) {
+          let loadedForm = { ...DEFAULT_FORM, ...parsed.formData };
+          // Migrate old phase shape { month, days, mode } to { month, sessions: [...] }
+          const needsMigration = loadedForm.phases?.some(p => !Array.isArray(p.sessions));
+          if (needsMigration) {
+            loadedForm = {
+              ...loadedForm,
+              phases: loadedForm.phases.map((p, i) => ({
+                month: p.month || `Month ${i + 1}`,
+                sessions: Array.isArray(p.sessions) ? p.sessions : [{ day: "Day 1", mode: p.mode || "" }],
+              })),
+            };
+          }
+          setFormData(loadedForm);
+        }
         if (parsed.analysis)    setAnalysis(parsed.analysis);
         if (parsed.attachments) setAttachments(parsed.attachments);
       }
@@ -103,25 +110,67 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis);
   };
-  const addPhase = () => {
-    const updated = { ...formData, phases: [...formData.phases, { month: `Month ${formData.phases.length + 1}`, days: "", mode: "" }] };
+
+  // ── Month-level operations ─────────────────────
+  const addMonth = () => {
+    const updated = {
+      ...formData,
+      phases: [...formData.phases, {
+        month: `Month ${formData.phases.length + 1}`,
+        sessions: [{ day: "Day 1", mode: "" }]
+      }]
+    };
     setFormData(updated);
     persist(updated, analysis);
   };
 
-  const removePhase = (i) => {
-    const updated = { ...formData, phases: formData.phases.filter((_, idx) => idx !== i) };
+  const removeMonth = (mi) => {
+    const updated = { ...formData, phases: formData.phases.filter((_, idx) => idx !== mi) };
     setFormData(updated);
     persist(updated, analysis);
   };
 
-  const updatePhase = (i, field, value) => {
-    const phases  = formData.phases.map((p, idx) => idx === i ? { ...p, [field]: value } : p);
+  const updateMonthName = (mi, value) => {
+    const phases = formData.phases.map((p, idx) => idx === mi ? { ...p, month: value } : p);
     const updated = { ...formData, phases };
     setFormData(updated);
     persist(updated, analysis);
   };
 
+  // ── Day/session-level operations ───────────────
+  const addSessionToMonth = (mi) => {
+    const phases = formData.phases.map((p, idx) => {
+      if (idx !== mi) return p;
+      const dayNum = p.sessions.length + 1;
+      return { ...p, sessions: [...p.sessions, { day: `Day ${dayNum}`, mode: "" }] };
+    });
+    const updated = { ...formData, phases };
+    setFormData(updated);
+    persist(updated, analysis);
+  };
+
+  const removeSession = (mi, si) => {
+    const phases = formData.phases.map((p, idx) => {
+      if (idx !== mi) return p;
+      return { ...p, sessions: p.sessions.filter((_, sidx) => sidx !== si) };
+    });
+    const updated = { ...formData, phases };
+    setFormData(updated);
+    persist(updated, analysis);
+  };
+
+  const updateSession = (mi, si, field, value) => {
+    const phases = formData.phases.map((p, idx) => {
+      if (idx !== mi) return p;
+      const sessions = p.sessions.map((s, sidx) => sidx === si ? { ...s, [field]: value } : s);
+      return { ...p, sessions };
+    });
+    const updated = { ...formData, phases };
+    setFormData(updated);
+    persist(updated, analysis);
+  };
+
+  // ── Attachments ───────────────────────────────
   const handleFiles = (files, type = "file") => {
     const newAtts = Array.from(files).map(f => ({ name: f.name, type, size: (f.size / 1024).toFixed(1) + " KB" }));
     const next = [...attachments, ...newAtts];
@@ -143,6 +192,60 @@ export default function IntakeStage() {
     setFormData(updated);
     persist(updated, analysis, next);
   };
+
+  // ── Speech-to-text recording ──────────────────
+  // NOTE: these must live at component top level (not inside handleAnalyse)
+  // so the Record Call button can actually call them.
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setRecError("Your browser doesn't support speech recognition. Try Chrome.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous     = true;
+    recognition.interimResults = true;
+    recognition.lang           = "en-IN";
+
+    recognition.onresult = (e) => {
+      let full = "";
+      for (let i = 0; i < e.results.length; i++) {
+        full += e.results[i][0].transcript + " ";
+      }
+      setTranscript(full.trim());
+    };
+
+    recognition.onerror = (e) => {
+      setRecError("Recording error: " + e.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    setRecError("");
+  };
+
+  const stopRecording = () => {
+    recognitionRef.current?.stop();
+    setIsRecording(false);
+    if (transcript) {
+      const updated = {
+        ...formData,
+        meetingNotes: formData.meetingNotes
+          ? formData.meetingNotes + "\n\n[Recording Transcript]\n" + transcript
+          : "[Recording Transcript]\n" + transcript
+      };
+      setFormData(updated);
+      persist(updated, analysis);
+    }
+  };
+
+  // ── Source tag styling ─────────────────────────
   const SOURCE_STYLE = {
     client_stated: { label: "Client Stated", bg: "#dcfce7", color: "#166534" },
     inferred:      { label: "Inferred",      bg: "#fef3c7", color: "#92400e" },
@@ -151,7 +254,6 @@ export default function IntakeStage() {
 
   const confidenceColor = (score) => score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
 
-  // ── Start editing a field. arrayIndex is only used for array-valued fields ──
   const startEdit = (fieldKey, currentValue) => {
     setEditingField(fieldKey);
     setEditDraft(Array.isArray(currentValue) ? currentValue.join("\n") : (currentValue || ""));
@@ -240,6 +342,7 @@ export default function IntakeStage() {
     );
   };
 
+  // ── Analyse ───────────────────────────────────
   const handleAnalyse = async () => {
     if (!formData.client) { setError("Please enter Client Name"); return; }
     if (!formData.brief && !formData.meetingNotes) { setError("Please paste the client brief or meeting notes."); return; }
@@ -281,6 +384,8 @@ export default function IntakeStage() {
     localStorage.removeItem(INTAKE_STORAGE_KEY);
     localStorage.removeItem("pis_opportunity_id");
   };
+
+  // ── Shared styles ─────────────────────────────
   const S = {
     sectionTitle: { fontSize: "19px", fontWeight: "700", color: "#0f172a", borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginTop: "36px", marginBottom: "18px" },
     grid2:  { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
@@ -301,6 +406,13 @@ export default function IntakeStage() {
   };
 
   return (
+    <>
+    <style>{`
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+    `}</style>
     <div style={{ display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "Inter, sans-serif" }}>
 
       {/* SIDEBAR */}
@@ -327,7 +439,7 @@ export default function IntakeStage() {
             )}
           </div>
 
-          {/* ── PROGRAMME TYPE (Sparsh point 2 — at the top) ── */}
+          {/* PROGRAMME TYPE */}
           <h2 style={S.sectionTitle}>Programme Type</h2>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             {PROG_TYPES.map(opt => (
@@ -340,11 +452,11 @@ export default function IntakeStage() {
           </div>
           {formData.programmeType === "repeat" && (
             <div style={{ marginTop: "12px", padding: "12px 16px", background: "#fef3c7", borderRadius: "12px", border: "1px solid #fbbf24", fontSize: "13px", color: "#92400e" }}>
-               Repeat programme — "Next" will skip Discovery Questions and go straight to Architecture.
+              ⚡ Repeat programme — "Next" will skip Discovery Questions and go straight to Architecture.
             </div>
           )}
 
-          {/* ── OPPORTUNITY BASICS ── */}
+          {/* OPPORTUNITY BASICS */}
           <h2 style={S.sectionTitle}>Opportunity Basics</h2>
           <div style={S.grid2}>
             {[["title", "Opportunity Title", "e.g. AI Leadership Programme"], ["client", "Client Name *", "e.g. Tata Digital Services"], ["organisation", "Organisation", "Parent organisation"], ["industry", "Industry", "e.g. Financial Services"]].map(([name, label, ph]) => (
@@ -355,32 +467,41 @@ export default function IntakeStage() {
             ))}
           </div>
 
-          {/* ── CLIENT BRIEF & ATTACHMENTS ── */}
+          {/* CLIENT BRIEF & ATTACHMENTS */}
           <h2 style={S.sectionTitle}>Client Brief & Attachments</h2>
 
           <div style={S.card}>
-            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Client Email / RFP/ Meeting Notes</div>
+            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Client Email / RFP / Meeting Notes</div>
             <textarea name="brief" value={formData.brief} onChange={handleChange}
               placeholder="Paste client email, RFP, or any text brief here..." rows={7} style={S.textarea} />
           </div>
-
-         
 
           <div style={{ ...S.card, marginTop: "12px" }}>
             <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "14px" }}>Attach Source Material</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
               {[
-                { label: " Attach Files",      ref: fileRef,  accept: "*",        type: "file" },
-                { label: " Audio / Recording", ref: audioRef, accept: "audio/*",  type: "audio" },
-                { label: " Images",            ref: imageRef, accept: "image/*",  type: "image" },
+                { label: "📎 Attach Files",      ref: fileRef,  accept: "*",        type: "file" },
+                { label: "🎵 Audio / Recording", ref: audioRef, accept: "audio/*",  type: "audio" },
+                { label: "🖼️ Images",            ref: imageRef, accept: "image/*",  type: "image" },
               ].map(btn => (
                 <span key={btn.label}>
                   <input type="file" ref={btn.ref} multiple accept={btn.accept} style={{ display: "none" }} onChange={e => handleFiles(e.target.files, btn.type)} />
                   <button onClick={() => btn.ref.current?.click()} style={S.outlineBtn}>{btn.label}</button>
                 </span>
               ))}
-              <button onClick={() => alert("In-app recording — coming soon.")} style={S.outlineBtn}>Record Call</button>
-              <button onClick={() => alert("Teams / Zoom / Meet integration — coming soon.")} style={S.outlineBtn}> Import from Meeting App</button>
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                style={{
+                  ...S.outlineBtn,
+                  background: isRecording ? "#fef2f2" : "white",
+                  border: isRecording ? "1px solid #dc2626" : "1px solid #cbd5e1",
+                  color: isRecording ? "#dc2626" : "#334155",
+                  animation: isRecording ? "pulse 1.5s infinite" : "none",
+                }}
+              >
+                {isRecording ? "⏹ Stop Recording" : "🎙️ Record Call"}
+              </button>
+              <button onClick={() => alert("Teams / Zoom / Meet integration — coming soon.")} style={S.outlineBtn}>📹 Import from Meeting App</button>
             </div>
 
             <div style={{ display: "flex", gap: "10px" }}>
@@ -397,7 +518,7 @@ export default function IntakeStage() {
                 {attachments.map((att, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f1f5f9", borderRadius: "10px", fontSize: "13px" }}>
                     <span>
-                      {att.type === "audio" ?  : att.type === "image" ? : att.type === "link" ? }{" "}
+                      {att.type === "audio" ? "🎵" : att.type === "image" ? "🖼️" : att.type === "link" ? "🔗" : "📎"}{" "}
                       <strong>{att.name}</strong>
                       <span style={{ color: "#94a3b8", marginLeft: "8px" }}>{att.size}</span>
                     </span>
@@ -408,8 +529,41 @@ export default function IntakeStage() {
             )}
           </div>
 
-         
-         
+          {/* Recording transcript area */}
+          {(isRecording || transcript) && (
+            <div style={{ marginTop: "16px", padding: "16px", background: isRecording ? "#fef2f2" : "#f0fdf4", borderRadius: "12px", border: `1px solid ${isRecording ? "#fca5a5" : "#86efac"}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                <span style={{ fontSize: "13px", fontWeight: "700", color: isRecording ? "#dc2626" : "#16a34a" }}>
+                  {isRecording ? "🔴 Recording in progress... speak now" : "✅ Transcript captured"}
+                </span>
+                {transcript && !isRecording && (
+                  <button
+                    onClick={() => setTranscript("")}
+                    style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "13px", fontWeight: "600" }}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              {transcript && (
+                <p style={{ fontSize: "14px", color: "#334155", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+                  {transcript}
+                </p>
+              )}
+              {isRecording && !transcript && (
+                <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0, fontStyle: "italic" }}>Listening...</p>
+              )}
+              {!isRecording && transcript && (
+                <p style={{ fontSize: "12px", color: "#16a34a", marginTop: "10px", marginBottom: 0 }}>
+                  ✓ Transcript automatically added to Meeting Notes
+                </p>
+              )}
+            </div>
+          )}
+          {recError && (
+            <div style={{ marginTop: "10px", padding: "10px 14px", background: "#fef2f2", borderRadius: "10px", fontSize: "13px", color: "#dc2626" }}>
+              ⚠️ {recError}
+            </div>
+          )}
 
           {/* Duration */}
           <div style={{ ...S.card, marginTop: "12px" }}>
@@ -467,55 +621,75 @@ export default function IntakeStage() {
                   </div>
                 </div>
 
-                {formData.totalDays && !formData.durationCustom === false ? null : null}
                 {formData.totalDays && (
                   <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "8px" }}>
                     Total contact time: {(Number(formData.totalDays) || 0) * (Number(formData.hoursPerDay) || 0)} hours
                   </p>
                 )}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px", marginBottom: "12px" }}>
-                  <label style={{ ...S.label, margin: 0 }}>Phase Breakdown — by calendar month</label>
-                  <button onClick={addPhase} style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>+ Add Month</button>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-                    <thead>
-                      <tr style={{ background: "#f1f5f9" }}>
-                        {["Month", "Days", "Delivery Mode", ""].map(h => (
-                          <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: "600", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.phases.map((phase, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "8px 14px" }}>
-                            <input value={phase.month} onChange={e => updatePhase(i, "month", e.target.value)} style={{ ...S.input, padding: "8px 12px", fontSize: "13px" }} />
-                          </td>
-                          <td style={{ padding: "8px 14px" }}>
-                            <input value={phase.days} onChange={e => updatePhase(i, "days", e.target.value)} type="number" min="0" placeholder="0" style={{ ...S.input, padding: "8px 12px", fontSize: "13px", maxWidth: 80 }} />
-                          </td>
-                          <td style={{ padding: "8px 14px" }}>
-                            <select value={phase.mode} onChange={e => updatePhase(i, "mode", e.target.value)} style={{ ...S.input, padding: "8px 12px", fontSize: "13px" }}>
-                              <option value="">Select mode</option>
-                              {MODE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                          </td>
-                          <td style={{ padding: "8px 14px" }}>
-                            {formData.phases.length > 1 && (
-                              <button onClick={() => removePhase(i)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "16px", fontWeight: "700" }}>✕</button>
-                            )}
-                          </td>
-                        </tr>
+                <div style={{ marginTop: "24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                    <label style={{ ...S.label, margin: 0 }}>Phase Breakdown — by calendar month</label>
+                    <button onClick={addMonth}
+                      style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>
+                      + Add Month
+                    </button>
+                  </div>
+
+                  {formData.phases.map((phase, mi) => (
+                    <div key={mi} style={{ marginBottom: "16px", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden" }}>
+                      {/* Month header row */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+                        <input
+                          value={phase.month}
+                          onChange={e => updateMonthName(mi, e.target.value)}
+                          style={{ ...S.input, padding: "8px 12px", fontSize: "14px", fontWeight: "700", maxWidth: 160, background: "white" }}
+                        />
+                        <span style={{ fontSize: "12px", color: "#64748b" }}>{phase.sessions.length} session{phase.sessions.length !== 1 ? "s" : ""}</span>
+                        <button
+                          onClick={() => addSessionToMonth(mi)}
+                          style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", fontSize: "12px", fontWeight: "600", cursor: "pointer", marginLeft: "auto" }}>
+                          + Add Day
+                        </button>
+                        {formData.phases.length > 1 && (
+                          <button onClick={() => removeMonth(mi)}
+                            style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "16px", fontWeight: "700" }}>✕</button>
+                        )}
+                      </div>
+
+                      {/* Sessions under this month */}
+                      {phase.sessions.map((session, si) => (
+                        <div key={si} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 16px", borderBottom: si < phase.sessions.length - 1 ? "1px solid #f1f5f9" : "none", background: "white" }}>
+                          <span style={{ fontSize: "12px", fontWeight: "600", color: "#475569", minWidth: 50 }}>{session.day}</span>
+                          <input
+                            value={session.day}
+                            onChange={e => updateSession(mi, si, "day", e.target.value)}
+                            placeholder="e.g. Day 1"
+                            style={{ ...S.input, padding: "8px 12px", fontSize: "13px", maxWidth: 120 }}
+                          />
+                          <select
+                            value={session.mode}
+                            onChange={e => updateSession(mi, si, "mode", e.target.value)}
+                            style={{ ...S.input, padding: "8px 12px", fontSize: "13px", flex: 1 }}>
+                            <option value="">Select delivery mode</option>
+                            <option value="On-campus">🏢 On-campus</option>
+                            <option value="Live-Virtual">💻 Live-Virtual (Online)</option>
+                            <option value="Async">📚 Async (Self-paced)</option>
+                            
+                          </select>
+                          {phase.sessions.length > 1 && (
+                            <button onClick={() => removeSession(mi, si)}
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "15px", fontWeight: "700" }}>✕</button>
+                          )}
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  ))}
                 </div>
               </>
             ) : (
               <div style={{ padding: "14px 18px", background: "#fef3c7", borderRadius: "12px", border: "1px solid #fbbf24", fontSize: "13px", color: "#92400e" }}>
-                 Duration not specified in brief — flagged for scoping. Revisit once budget is confirmed.
+                ⚠️ Duration not specified in brief — flagged for scoping. Revisit once budget is confirmed.
               </div>
             )}
           </div>
@@ -530,14 +704,13 @@ export default function IntakeStage() {
             </button>
           </div>
 
-          {/* ERROR */}
           {error && (
             <p style={{ color: "#dc2626", marginTop: "20px", padding: "12px 16px", background: "#fef2f2", borderRadius: "10px", fontSize: "14px" }}>
               {error}
             </p>
           )}
 
-          {/* ── BRIEF INTERPRETATION RESULT ── */}
+          {/* BRIEF INTERPRETATION RESULT */}
           {analysis && (
             <div style={{ marginTop: "40px", padding: "32px", background: "#f8fbff", borderRadius: "24px", border: "2px solid #dbe4ff" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
@@ -555,20 +728,20 @@ export default function IntakeStage() {
                 <div style={{ height: "100%", width: `${analysis.interpreted?.confidence_score}%`, background: analysis.interpreted?.confidence_score >= 70 ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#f59e0b,#d97706)", borderRadius: "999px", transition: "width 1s ease" }} />
               </div>
 
-             {renderSection("problem_statement", "Problem Statement / Rationale", "#0f172a")}
-              {renderSection("goals", " Goals", "#2563eb", true)}
-              {renderSection("audience", " Audience", "#7c3aed")}
-              {renderSection("why_needed", " Why Do They Need It", "#9333ea")}
-              {renderSection("themes", " Capability Themes", "#059669", true)}
-              {renderSection("constraints", "Constraints", "#dc2626", true)}
-              {renderSection("pedagogical_posture", "Suggested Approach", "#d97706")}
-              {renderSection("suggested_format", "Suggested Format", "#0891b2")}
-              {renderSection("suggested_duration", " Suggested Duration", "#0891b2")}
-              {renderSection("suggested_budget", " Suggested Budget", "#0891b2")}
+              {renderSection("problem_statement", "📝 Problem Statement / Rationale", "#0f172a")}
+              {renderSection("goals", "🎯 Goals", "#2563eb", true)}
+              {renderSection("audience", "👥 Audience", "#7c3aed")}
+              {renderSection("why_needed", "🤔 Why Do They Need It", "#9333ea")}
+              {renderSection("themes", "🏷️ Capability Themes", "#059669", true)}
+              {renderSection("constraints", "⚠️ Constraints", "#dc2626", true)}
+              {renderSection("pedagogical_posture", "📚 Suggested Approach", "#d97706")}
+              {renderSection("suggested_format", "🎬 Suggested Format", "#0891b2")}
+              {renderSection("suggested_duration", "📅 Suggested Duration", "#0891b2")}
+              {renderSection("suggested_budget", "💰 Suggested Budget", "#0891b2")}
 
               {analysis.interpreted?.ambiguities?.length > 0 && (
                 <div style={{ ...S.aiCard, background: "#fef3c7", border: "1px solid #fbbf24" }}>
-                  <h3 style={{ marginBottom: "10px", color: "#92400e", fontSize: "15px", fontWeight: "700" }}> Ambiguities — Confirm in Discovery Call</h3>
+                  <h3 style={{ marginBottom: "10px", color: "#92400e", fontSize: "15px", fontWeight: "700" }}>🔍 Ambiguities — Confirm in Discovery Call</h3>
                   <ul style={{ paddingLeft: "20px", margin: 0 }}>
                     {analysis.interpreted.ambiguities.map((a, i) => <li key={i} style={{ marginBottom: "6px", color: "#78350f", fontSize: "14px" }}>{a}</li>)}
                   </ul>
@@ -589,5 +762,6 @@ export default function IntakeStage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
