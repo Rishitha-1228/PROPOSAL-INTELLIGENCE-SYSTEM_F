@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 **/node_modules
 .pnpm-store/
@@ -112,3 +113,8 @@ temp/
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
 .project-config.json
+=======
+node_modules
+.env
+dist
+>>>>>>> 59d9d16c51cfbec5afabd9bb7d98b13ab3059cb9
